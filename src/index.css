@@ -1,96 +1,74 @@
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Space+Mono:wght@400;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
-All colors MUST be HSL.
-*/
+/* THE MULTIPLAYER VOID - Brutalist Design System */
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
-
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
-
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
-
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
-
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
-
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
-
-    --radius: 0.5rem;
-
-    --sidebar-background: 0 0% 98%;
-
-    --sidebar-foreground: 240 5.3% 26.1%;
-
-    --sidebar-primary: 240 5.9% 10%;
-
-    --sidebar-primary-foreground: 0 0% 98%;
-
-    --sidebar-accent: 240 4.8% 95.9%;
-
-    --sidebar-accent-foreground: 240 5.9% 10%;
-
-    --sidebar-border: 220 13% 91%;
-
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    /* Core brutalist palette */
+    --background: 0 0% 0%;
+    --foreground: 0 0% 100%;
+    --void-dark: 0 0% 7%;
+    
+    --card: 0 0% 0%;
+    --card-foreground: 0 0% 100%;
+    
+    --popover: 0 0% 0%;
+    --popover-foreground: 0 0% 100%;
+    
+    --primary: 0 0% 100%;
+    --primary-foreground: 0 0% 0%;
+    
+    --secondary: 0 0% 15%;
+    --secondary-foreground: 0 0% 100%;
+    
+    --muted: 0 0% 10%;
+    --muted-foreground: 0 0% 60%;
+    
+    --accent: 0 0% 20%;
+    --accent-foreground: 0 0% 100%;
+    
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+    
+    --border: 0 0% 100%;
+    --input: 0 0% 20%;
+    --ring: 0 0% 100%;
+    
+    --radius: 0px;
+    
+    /* Emotion colors - Raw, saturated */
+    --emotion-happy: 50 100% 50%;
+    --emotion-angry: 0 100% 50%;
+    --emotion-sad: 220 100% 50%;
+    --emotion-neutral: 140 70% 40%;
+    --emotion-normal: 30 100% 50%;
+    --emotion-weird: 0 0% 100%;
+    
+    /* Emotion foregrounds for text contrast */
+    --emotion-happy-foreground: 0 0% 0%;
+    --emotion-angry-foreground: 0 0% 100%;
+    --emotion-sad-foreground: 0 0% 100%;
+    --emotion-neutral-foreground: 0 0% 0%;
+    --emotion-normal-foreground: 0 0% 0%;
+    --emotion-weird-foreground: 0 0% 0%;
+    
+    --sidebar-background: 0 0% 5%;
+    --sidebar-foreground: 0 0% 100%;
+    --sidebar-primary: 0 0% 100%;
+    --sidebar-primary-foreground: 0 0% 0%;
+    --sidebar-accent: 0 0% 15%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 0 0% 100%;
+    --sidebar-ring: 0 0% 100%;
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --background: 0 0% 0%;
+    --foreground: 0 0% 100%;
   }
 }
 
@@ -100,6 +78,87 @@ All colors MUST be HSL.
   }
 
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground font-mono antialiased;
+    font-family: 'JetBrains Mono', 'Space Mono', monospace;
+  }
+  
+  /* Remove all rounded corners - BRUTALIST */
+  * {
+    border-radius: 0 !important;
+  }
+}
+
+@layer components {
+  /* Sticky note emotion variants */
+  .note-happy {
+    background-color: hsl(var(--emotion-happy));
+    color: hsl(var(--emotion-happy-foreground));
+  }
+  
+  .note-angry {
+    background-color: hsl(var(--emotion-angry));
+    color: hsl(var(--emotion-angry-foreground));
+  }
+  
+  .note-sad {
+    background-color: hsl(var(--emotion-sad));
+    color: hsl(var(--emotion-sad-foreground));
+  }
+  
+  .note-neutral {
+    background-color: hsl(var(--emotion-neutral));
+    color: hsl(var(--emotion-neutral-foreground));
+  }
+  
+  .note-normal {
+    background-color: hsl(var(--emotion-normal));
+    color: hsl(var(--emotion-normal-foreground));
+  }
+  
+  .note-weird {
+    background-color: hsl(var(--emotion-weird));
+    color: hsl(var(--emotion-weird-foreground));
+  }
+  
+  /* Brutalist button */
+  .btn-brutalist {
+    @apply border border-foreground bg-background text-foreground px-4 py-2 font-mono uppercase tracking-wider;
+    @apply hover:bg-foreground hover:text-background transition-colors duration-100;
+    @apply active:translate-y-[1px];
+  }
+  
+  .btn-spawn {
+    @apply fixed bottom-8 right-8 w-16 h-16 border-2 border-foreground bg-background text-foreground;
+    @apply flex items-center justify-center text-4xl font-bold;
+    @apply hover:bg-foreground hover:text-background transition-colors duration-100;
+    @apply z-50 cursor-pointer;
+  }
+  
+  /* Infinite board */
+  .void-board {
+    @apply w-full h-screen overflow-auto bg-background;
+    background-image: 
+      radial-gradient(circle at 1px 1px, hsl(0 0% 15%) 1px, transparent 0);
+    background-size: 40px 40px;
+    cursor: grab;
+  }
+  
+  .void-board:active {
+    cursor: grabbing;
+  }
+  
+  /* Chat bubble */
+  .chat-bubble {
+    @apply absolute -bottom-2 left-1/2 transform -translate-x-1/2 translate-y-full;
+    @apply bg-background border border-foreground p-3 text-xs max-w-[200px];
+    @apply text-foreground font-mono;
+  }
+  
+  .chat-bubble::before {
+    content: '';
+    @apply absolute -top-2 left-1/2 transform -translate-x-1/2;
+    border-left: 8px solid transparent;
+    border-right: 8px solid transparent;
+    border-bottom: 8px solid hsl(var(--foreground));
   }
 }
