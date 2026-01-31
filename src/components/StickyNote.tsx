@@ -1,9 +1,9 @@
 import { useState, useCallback, useRef } from 'react';
-import Draggable, { DraggableData, DraggableEvent } from 'react-draggable';
-import { MessageCircle, X, GripVertical } from 'lucide-react';
+import Draggable from 'react-draggable';
+import { MessageCircle, X, GripVertical, Send } from 'lucide-react';
 import { useSentiment, getEmotionClass, EmotionType } from '@/hooks/useSentiment';
-import { getAIResponse } from '@/utils/aiResponses';
-import { ChatBubble } from './ChatBubble';
+import { getAIResponse, getAIChatResponse } from '@/utils/aiResponses';
+import { SmartText } from './SmartText';
 
 interface StickyNoteProps {
   id: string;
@@ -12,21 +12,57 @@ interface StickyNoteProps {
   onDelete: (id: string) => void;
 }
 
+interface ChatMessage {
+  role: 'user' | 'ai';
+  content: string;
+}
+
 export function StickyNote({ id, initialPosition, initialRotation, onDelete }: StickyNoteProps) {
   const [text, setText] = useState('');
   const [showChat, setShowChat] = useState(false);
-  const [chatMessage, setChatMessage] = useState('');
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  const [chatInput, setChatInput] = useState('');
   const [isDragging, setIsDragging] = useState(false);
   const nodeRef = useRef<HTMLDivElement>(null);
+  const chatInputRef = useRef<HTMLInputElement>(null);
 
   const emotion: EmotionType = useSentiment(text);
   const emotionClass = getEmotionClass(emotion);
 
-  const handleTalk = useCallback(() => {
-    const response = getAIResponse(emotion, text);
-    setChatMessage(response);
-    setShowChat(true);
-  }, [emotion, text]);
+  const handleToggleChat = useCallback(() => {
+    if (!showChat) {
+      // Opening chat - add initial AI greeting
+      const greeting = getAIResponse(emotion, text);
+      setChatMessages([{ role: 'ai', content: greeting }]);
+      setShowChat(true);
+      setTimeout(() => chatInputRef.current?.focus(), 100);
+    } else {
+      setShowChat(false);
+      setChatMessages([]);
+      setChatInput('');
+    }
+  }, [showChat, emotion, text]);
+
+  const handleSendMessage = useCallback(() => {
+    if (!chatInput.trim()) return;
+
+    const userMessage = chatInput.trim();
+    setChatMessages((prev) => [...prev, { role: 'user', content: userMessage }]);
+    setChatInput('');
+
+    // AI responds based on note's current emotion
+    setTimeout(() => {
+      const aiResponse = getAIChatResponse(emotion, userMessage);
+      setChatMessages((prev) => [...prev, { role: 'ai', content: aiResponse }]);
+    }, 500);
+  }, [chatInput, emotion]);
+
+  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSendMessage();
+    }
+  }, [handleSendMessage]);
 
   const handleDragStart = () => setIsDragging(true);
   const handleDragStop = () => setIsDragging(false);
@@ -52,11 +88,11 @@ export function StickyNote({ id, initialPosition, initialRotation, onDelete }: S
           <GripVertical size={16} className="opacity-50" />
           <div className="flex gap-1">
             <button
-              onClick={handleTalk}
-              className="p-1 hover:opacity-70 transition-opacity"
-              title="Talk to this note"
+              onClick={handleToggleChat}
+              className={`p-1 hover:opacity-70 transition-opacity ${showChat ? 'opacity-100' : 'opacity-70'}`}
+              title="Chat with this note"
             >
-              <MessageCircle size={16} />
+              <MessageCircle size={16} fill={showChat ? 'currentColor' : 'none'} />
             </button>
             <button
               onClick={() => onDelete(id)}
@@ -82,12 +118,39 @@ export function StickyNote({ id, initialPosition, initialRotation, onDelete }: S
           {emotion}
         </div>
 
-        {/* Chat bubble */}
+        {/* Inline Chat */}
         {showChat && (
-          <ChatBubble
-            message={chatMessage}
-            onClose={() => setShowChat(false)}
-          />
+          <div className="border-t border-current">
+            {/* Chat messages */}
+            <div className="note-chat-response">
+              {chatMessages.map((msg, idx) => (
+                <div key={idx} className={`mb-1 ${msg.role === 'user' ? 'opacity-60' : ''}`}>
+                  <span className="font-bold">{msg.role === 'user' ? 'you: ' : 'ai: '}</span>
+                  <SmartText text={msg.content} />
+                </div>
+              ))}
+            </div>
+            
+            {/* Chat input */}
+            <div className="flex items-center border-t border-current">
+              <input
+                ref={chatInputRef}
+                type="text"
+                value={chatInput}
+                onChange={(e) => setChatInput(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder="say something..."
+                className="note-chat-input flex-1"
+              />
+              <button
+                onClick={handleSendMessage}
+                className="p-2 hover:opacity-70 transition-opacity"
+                title="Send message"
+              >
+                <Send size={14} />
+              </button>
+            </div>
+          </div>
         )}
       </div>
     </Draggable>

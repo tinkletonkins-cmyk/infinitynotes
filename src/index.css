@@ -47,6 +47,7 @@
     --emotion-neutral: 140 70% 40%;
     --emotion-normal: 30 100% 50%;
     --emotion-weird: 0 0% 100%;
+    --emotion-question: 280 100% 60%;
     
     /* Emotion foregrounds for text contrast */
     --emotion-happy-foreground: 0 0% 0%;
@@ -55,6 +56,7 @@
     --emotion-neutral-foreground: 0 0% 0%;
     --emotion-normal-foreground: 0 0% 0%;
     --emotion-weird-foreground: 0 0% 0%;
+    --emotion-question-foreground: 0 0% 100%;
     
     --sidebar-background: 0 0% 5%;
     --sidebar-foreground: 0 0% 100%;
@@ -120,6 +122,11 @@
     color: hsl(var(--emotion-weird-foreground));
   }
   
+  .note-question {
+    background-color: hsl(var(--emotion-question));
+    color: hsl(var(--emotion-question-foreground));
+  }
+  
   /* Brutalist button */
   .btn-brutalist {
     @apply border border-foreground bg-background text-foreground px-4 py-2 font-mono uppercase tracking-wider;
@@ -134,7 +141,7 @@
     @apply z-50 cursor-pointer;
   }
   
-  /* Infinite board */
+  /* Void board - dark grid */
   .void-board {
     @apply w-full h-screen overflow-auto bg-background;
     background-image: 
@@ -143,22 +150,42 @@
     cursor: grab;
   }
   
+  /* Cork board texture */
+  .void-board.mode-board {
+    background: 
+      url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect fill="%23b8956e" width="100" height="100"/><circle fill="%23a8855e" cx="20" cy="30" r="3"/><circle fill="%23c8a57e" cx="50" cy="10" r="2"/><circle fill="%23987545" cx="80" cy="60" r="4"/><circle fill="%23d8b58e" cx="30" cy="70" r="2"/><circle fill="%23a8855e" cx="70" cy="40" r="3"/><circle fill="%23987545" cx="10" cy="90" r="2"/><circle fill="%23c8a57e" cx="60" cy="80" r="3"/><circle fill="%23b8956e" cx="90" cy="20" r="2"/></svg>'),
+      linear-gradient(135deg, hsl(30 40% 55%) 0%, hsl(25 35% 50%) 50%, hsl(30 40% 55%) 100%);
+    background-size: 80px 80px, 100% 100%;
+    cursor: grab;
+  }
+  
   .void-board:active {
     cursor: grabbing;
   }
   
-  /* Chat bubble */
-  .chat-bubble {
-    @apply absolute -bottom-2 left-1/2 transform -translate-x-1/2 translate-y-full;
-    @apply bg-background border border-foreground p-3 text-xs max-w-[200px];
-    @apply text-foreground font-mono;
+  /* Mode toggle switch */
+  .mode-toggle {
+    @apply fixed top-20 right-4 z-50 flex items-center gap-3 px-4 py-2 border border-foreground bg-background;
   }
   
-  .chat-bubble::before {
-    content: '';
-    @apply absolute -top-2 left-1/2 transform -translate-x-1/2;
-    border-left: 8px solid transparent;
-    border-right: 8px solid transparent;
-    border-bottom: 8px solid hsl(var(--foreground));
+  .mode-toggle-label {
+    @apply text-xs uppercase tracking-widest font-mono;
+  }
+  
+  /* Smart link styling */
+  .smart-link {
+    @apply text-foreground underline underline-offset-2 hover:opacity-70 transition-opacity;
+    word-break: break-all;
+  }
+  
+  /* Note chat input */
+  .note-chat-input {
+    @apply w-full bg-transparent border-t border-current p-2 text-xs font-mono;
+    @apply placeholder:opacity-50 focus:outline-none;
+  }
+  
+  .note-chat-response {
+    @apply border-t border-current p-2 text-xs font-mono opacity-90;
+    @apply max-h-24 overflow-y-auto;
   }
 }
