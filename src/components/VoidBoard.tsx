@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import { Plus } from 'lucide-react';
 import { StickyNote } from './StickyNote';
+import { Switch } from '@/components/ui/switch';
 
 interface Note {
   id: string;
@@ -28,6 +29,7 @@ function getRandomPosition(): { x: number; y: number } {
 
 export function VoidBoard() {
   const [notes, setNotes] = useState<Note[]>([]);
+  const [isBoardMode, setIsBoardMode] = useState(false);
 
   const addNote = useCallback(() => {
     const newNote: Note = {
@@ -43,13 +45,28 @@ export function VoidBoard() {
   }, []);
 
   return (
-    <div className="void-board relative">
+    <div className={`void-board relative ${isBoardMode ? 'mode-board' : ''}`}>
       {/* Title */}
       <header className="fixed top-0 left-0 right-0 z-40 p-4 border-b border-foreground bg-background">
         <h1 className="text-xl font-bold uppercase tracking-[0.5em] text-center">
           THE MULTIPLAYER VOID
         </h1>
       </header>
+
+      {/* Mode toggle */}
+      <div className="mode-toggle">
+        <span className={`mode-toggle-label ${!isBoardMode ? 'opacity-100' : 'opacity-50'}`}>
+          VOID
+        </span>
+        <Switch
+          checked={isBoardMode}
+          onCheckedChange={setIsBoardMode}
+          className="data-[state=checked]:bg-foreground data-[state=unchecked]:bg-muted"
+        />
+        <span className={`mode-toggle-label ${isBoardMode ? 'opacity-100' : 'opacity-50'}`}>
+          BOARD
+        </span>
+      </div>
 
       {/* Notes container */}
       <div className="pt-16 min-h-screen">

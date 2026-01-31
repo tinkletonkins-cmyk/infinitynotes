@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import Sentiment from 'sentiment';
 
-export type EmotionType = 'happy' | 'angry' | 'sad' | 'neutral' | 'normal' | 'weird';
+export type EmotionType = 'happy' | 'angry' | 'sad' | 'neutral' | 'normal' | 'weird' | 'question';
 
 const sentiment = new Sentiment();
 
@@ -17,7 +17,10 @@ export function analyzeSentiment(text: string): EmotionType {
   
   const lowerText = text.toLowerCase();
   
-  // Check for weird words first
+  // Check for questions first - highest priority override
+  if (text.includes('?')) return 'question';
+  
+  // Check for weird words
   const hasWeirdWord = weirdWords.some(word => lowerText.includes(word));
   if (hasWeirdWord) return 'weird';
   
@@ -29,6 +32,9 @@ export function analyzeSentiment(text: string): EmotionType {
   if (score > 0.1) return 'neutral';
   if (score < -0.5) return 'angry';
   if (score < -0.1) return 'sad';
+  
+  // Score is exactly 0 or very close - neutral (green)
+  if (Math.abs(score) <= 0.1) return 'neutral';
   
   return 'normal';
 }
@@ -45,6 +51,7 @@ export function getEmotionClass(emotion: EmotionType): string {
     neutral: 'note-neutral',
     normal: 'note-normal',
     weird: 'note-weird',
+    question: 'note-question',
   };
   return classes[emotion];
 }
