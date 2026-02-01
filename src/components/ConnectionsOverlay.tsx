@@ -1,4 +1,5 @@
 import React, { useMemo } from 'react';
+import { motion } from 'framer-motion';
 import { Note } from '@/hooks/useNotes';
 
 const NOTE_WIDTH = 256;
@@ -7,6 +8,7 @@ const NOTE_HEIGHT = 200;
 interface ConnectionsOverlayProps {
   notes: Note[];
   searchQuery: string;
+  visible: boolean;
 }
 
 function getNoteCenter(note: Note): { x: number; y: number } {
@@ -21,7 +23,7 @@ function noteMatchesSearch(note: Note, query: string): boolean {
   return note.text.toLowerCase().includes(query.toLowerCase());
 }
 
-export function ConnectionsOverlay({ notes, searchQuery }: ConnectionsOverlayProps) {
+export function ConnectionsOverlay({ notes, searchQuery, visible }: ConnectionsOverlayProps) {
   // Build connections from parent-child relationships
   const connections = useMemo(() => {
     const lines: { from: Note; to: Note; dimmed: boolean }[] = [];
@@ -46,9 +48,17 @@ export function ConnectionsOverlay({ notes, searchQuery }: ConnectionsOverlayPro
   if (connections.length === 0) return null;
 
   return (
-    <svg
-      className="fixed inset-0 pointer-events-none z-0"
-      style={{ width: '100%', height: '100%' }}
+    <motion.svg
+      initial={{ opacity: 0 }}
+      animate={{ opacity: visible ? 1 : 0 }}
+      transition={{ duration: 0.3, ease: 'easeInOut' }}
+      className="fixed inset-0 pointer-events-none"
+      style={{ 
+        width: '100%', 
+        height: '100%',
+        zIndex: 999,
+        filter: 'drop-shadow(0 0 3px rgba(255,255,255,0.4)) drop-shadow(0 0 6px rgba(255,255,255,0.2))',
+      }}
     >
       <defs>
         <marker
@@ -65,6 +75,14 @@ export function ConnectionsOverlay({ notes, searchQuery }: ConnectionsOverlayPro
             className="text-foreground"
           />
         </marker>
+        {/* Glow filter for lines */}
+        <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+          <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+          <feMerge>
+            <feMergeNode in="coloredBlur"/>
+            <feMergeNode in="SourceGraphic"/>
+          </feMerge>
+        </filter>
       </defs>
       
       {connections.map(({ from, to, dimmed }, i) => {
@@ -72,8 +90,11 @@ export function ConnectionsOverlay({ notes, searchQuery }: ConnectionsOverlayPro
         const toCenter = getNoteCenter(to);
         
         return (
-          <line
+          <motion.line
             key={`${from.id}-${to.id}-${i}`}
+            initial={{ pathLength: 0 }}
+            animate={{ pathLength: 1 }}
+            transition={{ duration: 0.5, ease: 'easeOut' }}
             x1={fromCenter.x}
             y1={fromCenter.y}
             x2={toCenter.x}
@@ -81,11 +102,12 @@ export function ConnectionsOverlay({ notes, searchQuery }: ConnectionsOverlayPro
             stroke="currentColor"
             strokeWidth={2}
             strokeDasharray="8,4"
-            className={`text-foreground transition-opacity duration-300 ${dimmed ? 'opacity-10' : 'opacity-50'}`}
+            filter="url(#glow)"
+            className={`text-foreground transition-opacity duration-300 ${dimmed ? 'opacity-20' : 'opacity-70'}`}
             markerEnd="url(#arrowhead)"
           />
         );
       })}
-    </svg>
+    </motion.svg>
   );
 }

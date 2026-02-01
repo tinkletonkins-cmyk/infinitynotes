@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useMemo } from 'react';
-import { Plus, Loader2 } from 'lucide-react';
+import { Plus, Loader2, Eye, EyeOff } from 'lucide-react';
 import { StickyNote } from './StickyNote';
 import { Switch } from '@/components/ui/switch';
 import { useNotes, Note } from '@/hooks/useNotes';
@@ -30,6 +30,7 @@ export function VoidBoard() {
   const { notes, isLoading, addNote, updateNote, deleteNote } = useNotes();
   const [isBoardMode, setIsBoardMode] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [showLines, setShowLines] = useState(true);
 
   // Build parent-child relationships map
   const childrenMap = useMemo(() => {
@@ -133,7 +134,7 @@ export function VoidBoard() {
   return (
     <div className={`void-board relative ${isBoardMode ? 'mode-board' : ''}`}>
       {/* SVG Connections Overlay */}
-      <ConnectionsOverlay notes={notes} searchQuery={searchQuery} />
+      <ConnectionsOverlay notes={notes} searchQuery={searchQuery} visible={showLines} />
 
       {/* Title */}
       <header className="fixed top-0 left-0 right-0 z-40 p-4 border-b border-foreground bg-background">
@@ -142,13 +143,23 @@ export function VoidBoard() {
         </h1>
       </header>
 
-      {/* Search Bar */}
-      <SearchBar 
-        query={searchQuery}
-        onQueryChange={setSearchQuery}
-        resultCount={filteredNotes.length}
-        totalCount={notes.length}
-      />
+      {/* Search Bar and Connections Toggle */}
+      <div className="fixed top-16 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2">
+        <SearchBar 
+          query={searchQuery}
+          onQueryChange={setSearchQuery}
+          resultCount={filteredNotes.length}
+          totalCount={notes.length}
+        />
+        <button
+          onClick={() => setShowLines(!showLines)}
+          className="flex items-center gap-2 px-3 py-2 bg-background border border-foreground hover:bg-foreground hover:text-background transition-colors"
+          title={showLines ? 'Hide connections' : 'Show connections'}
+        >
+          {showLines ? <Eye size={16} /> : <EyeOff size={16} />}
+          <span className="text-xs uppercase tracking-wider font-mono hidden sm:inline">Lines</span>
+        </button>
+      </div>
 
       {/* Mode toggle */}
       <div className="mode-toggle">
