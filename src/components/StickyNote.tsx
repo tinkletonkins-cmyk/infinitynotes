@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
-import { motion, useMotionValue, useSpring, PanInfo } from 'framer-motion';
-import { MessageCircle, X, GripVertical, Send, Link2 } from 'lucide-react';
+import { motion, useMotionValue, useSpring } from 'framer-motion';
+import { MessageCircle, X, GripVertical, Send } from 'lucide-react';
 import { useSentiment, getEmotionClass, EmotionType } from '@/hooks/useSentiment';
 import { getAIResponse, getAIChatResponse } from '@/utils/aiResponses';
 import { useNoteMessages } from '@/hooks/useNoteMessages';
@@ -14,13 +14,10 @@ interface StickyNoteProps {
   initialPosition: { x: number; y: number };
   initialRotation: number;
   initialColor: string | null;
-  parentId: string | null;
-  stackDepth: number;
   dimmed: boolean;
   onDelete: (id: string) => void;
   onUpdate: (id: string, updates: { text?: string; position?: { x: number; y: number }; color?: string | null }) => void;
   onDrop: (id: string, position: { x: number; y: number }) => void;
-  onDrag: (parentId: string, deltaX: number, deltaY: number) => void;
 }
 
 // Snappy spring physics for responsive feel
@@ -36,20 +33,16 @@ export function StickyNote({
   initialPosition, 
   initialRotation,
   initialColor,
-  parentId,
-  stackDepth,
   dimmed,
   onDelete, 
   onUpdate,
   onDrop,
-  onDrag,
 }: StickyNoteProps) {
   const [text, setText] = useState(initialText);
   const [color, setColor] = useState<string | null>(initialColor);
   const [showChat, setShowChat] = useState(false);
   const [chatInput, setChatInput] = useState('');
   const [isDragging, setIsDragging] = useState(false);
-  const [isPeeled, setIsPeeled] = useState(false);
   
   const chatInputRef = useRef<HTMLInputElement>(null);
   const chatScrollRef = useRef<HTMLDivElement>(null);
@@ -141,24 +134,17 @@ export function StickyNote({
     updatePosition(id, lastPositionRef.current);
   };
 
-  const handleDrag = (_event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
+  const handleDrag = () => {
     const currentX = x.get();
     const currentY = y.get();
-    const deltaX = currentX - lastPositionRef.current.x;
-    const deltaY = currentY - lastPositionRef.current.y;
     
     // Update position in shared context for real-time line updates
     updatePosition(id, { x: currentX, y: currentY });
     
-    // Move children along with this note
-    if (deltaX !== 0 || deltaY !== 0) {
-      onDrag(id, deltaX, deltaY);
-    }
-    
     lastPositionRef.current = { x: currentX, y: currentY };
   };
 
-  const handleDragEnd = (_event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
+  const handleDragEnd = () => {
     setIsDragging(false);
     const newPos = { x: x.get(), y: y.get() };
     updatePosition(id, newPos);
@@ -170,15 +156,6 @@ export function StickyNote({
     onUpdate(id, { color: newColor });
   }, [id, onUpdate]);
 
-  const handlePeelStart = useCallback((e: React.MouseEvent | React.TouchEvent) => {
-    e.stopPropagation();
-    setIsPeeled(true);
-  }, []);
-
-  const handlePeelEnd = useCallback(() => {
-    setIsPeeled(false);
-  }, []);
-
   // Determine background style
   const backgroundStyle = color 
     ? { backgroundColor: color }
@@ -186,7 +163,7 @@ export function StickyNote({
 
   return (
     <motion.div
-      drag={!isPeeled}
+      drag
       dragMomentum={false}
       dragElastic={0.1}
       dragTransition={{
@@ -198,9 +175,7 @@ export function StickyNote({
         x: springX,
         y: springY,
         rotate: initialRotation,
-        zIndex: isDragging ? 1000 : (isPeeled ? 999 : stackDepth + 1),
-        boxShadow: stackDepth > 0 ? `${stackDepth * 2}px ${stackDepth * 2}px 8px rgba(0,0,0,0.3)` : undefined,
-        perspective: 800,
+        zIndex: isDragging ? 1000 : 1,
       }}
       onDragStart={handleDragStart}
       onDrag={handleDrag}
@@ -216,43 +191,14 @@ export function StickyNote({
       }}
       className={`absolute w-64 cursor-grab ${dimmed ? 'opacity-10 pointer-events-none' : ''}`}
     >
-      {/* Peel handle at TOP edge - click and hold to fold back */}
       <div
-        onMouseDown={handlePeelStart}
-        onMouseUp={handlePeelEnd}
-        onMouseLeave={handlePeelEnd}
-        onTouchStart={handlePeelStart}
-        onTouchEnd={handlePeelEnd}
-        className="absolute top-0 left-0 right-0 h-5 cursor-n-resize flex items-center justify-center z-50 opacity-0 hover:opacity-60 transition-opacity"
-        title="Hold to peek behind"
-      >
-        <div className="w-12 h-1 bg-current rounded-full mt-1" />
-      </div>
-
-      <motion.div
-        animate={{ 
-          rotateX: isPeeled ? 70 : 0,
-          opacity: isPeeled ? 0.4 : 1,
-        }}
-        transition={{ 
-          type: 'spring',
-          stiffness: 500,
-          damping: 30,
-        }}
-        style={{ 
-          transformOrigin: 'bottom center',
-          transformStyle: 'preserve-3d',
-          ...backgroundStyle,
-        }}
+        style={backgroundStyle}
         className={`relative w-full ${!color ? emotionClass : ''} border border-foreground`}
       >
         {/* Header with drag handle */}
         <div className="flex items-center justify-between p-2 border-b border-current">
           <div className="flex items-center gap-1">
             <GripVertical size={16} className="opacity-50" />
-            {parentId && (
-              <Link2 size={12} className="opacity-50" />
-            )}
           </div>
           <div className="flex gap-1">
             <ColorPicker currentColor={color} onColorSelect={handleColorChange} />
@@ -324,7 +270,7 @@ export function StickyNote({
             </div>
           </div>
         )}
-      </motion.div>
+      </div>
     </motion.div>
   );
 }
