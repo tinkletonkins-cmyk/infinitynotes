@@ -14,6 +14,42 @@ export type Database = {
   }
   public: {
     Tables: {
+      note_connections: {
+        Row: {
+          created_at: string
+          from_note_id: string
+          id: string
+          to_note_id: string
+        }
+        Insert: {
+          created_at?: string
+          from_note_id: string
+          id?: string
+          to_note_id: string
+        }
+        Update: {
+          created_at?: string
+          from_note_id?: string
+          id?: string
+          to_note_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "note_connections_from_note_id_fkey"
+            columns: ["from_note_id"]
+            isOneToOne: false
+            referencedRelation: "notes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "note_connections_to_note_id_fkey"
+            columns: ["to_note_id"]
+            isOneToOne: false
+            referencedRelation: "notes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       note_messages: {
         Row: {
           content: string
