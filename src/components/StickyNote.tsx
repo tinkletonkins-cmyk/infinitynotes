@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
-import Draggable from 'react-draggable';
+import { motion, useMotionValue, useSpring, PanInfo } from 'framer-motion';
 import { MessageCircle, X, GripVertical, Send, Link2 } from 'lucide-react';
 import { useSentiment, getEmotionClass, EmotionType } from '@/hooks/useSentiment';
 import { getAIResponse, getAIChatResponse } from '@/utils/aiResponses';
@@ -22,6 +22,13 @@ interface StickyNoteProps {
   onDrag: (parentId: string, deltaX: number, deltaY: number) => void;
 }
 
+// Snappy spring physics for responsive feel
+const springConfig = {
+  stiffness: 600,
+  damping: 20,
+  mass: 0.5,
+};
+
 export function StickyNote({ 
   id, 
   initialText, 
@@ -41,11 +48,18 @@ export function StickyNote({
   const [showChat, setShowChat] = useState(false);
   const [chatInput, setChatInput] = useState('');
   const [isDragging, setIsDragging] = useState(false);
-  const [position, setPosition] = useState(initialPosition);
-  const lastPositionRef = useRef(initialPosition);
-  const nodeRef = useRef<HTMLDivElement>(null);
+  
   const chatInputRef = useRef<HTMLInputElement>(null);
   const chatScrollRef = useRef<HTMLDivElement>(null);
+  const lastPositionRef = useRef(initialPosition);
+
+  // Motion values for snappy drag
+  const x = useMotionValue(initialPosition.x);
+  const y = useMotionValue(initialPosition.y);
+  
+  // Spring-animated position for smooth follow
+  const springX = useSpring(x, springConfig);
+  const springY = useSpring(y, springConfig);
 
   const { messages, username, sendMessage } = useNoteMessages(id);
   const emotion: EmotionType = useSentiment(text);
@@ -53,9 +67,10 @@ export function StickyNote({
 
   // Sync position from props (for when parent drags this child)
   useEffect(() => {
-    setPosition(initialPosition);
+    x.set(initialPosition.x);
+    y.set(initialPosition.y);
     lastPositionRef.current = initialPosition;
-  }, [initialPosition]);
+  }, [initialPosition, x, y]);
 
   // Sync color from props
   useEffect(() => {
@@ -116,24 +131,26 @@ export function StickyNote({
 
   const handleDragStart = () => {
     setIsDragging(true);
-    lastPositionRef.current = position;
+    lastPositionRef.current = { x: x.get(), y: y.get() };
   };
 
-  const handleDrag = (_e: any, data: { x: number; y: number }) => {
-    const deltaX = data.x - lastPositionRef.current.x;
-    const deltaY = data.y - lastPositionRef.current.y;
+  const handleDrag = (_event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
+    const currentX = x.get();
+    const currentY = y.get();
+    const deltaX = currentX - lastPositionRef.current.x;
+    const deltaY = currentY - lastPositionRef.current.y;
     
     // Move children along with this note
-    onDrag(id, deltaX, deltaY);
+    if (deltaX !== 0 || deltaY !== 0) {
+      onDrag(id, deltaX, deltaY);
+    }
     
-    lastPositionRef.current = { x: data.x, y: data.y };
+    lastPositionRef.current = { x: currentX, y: currentY };
   };
 
-  const handleDragStop = (_e: any, data: { x: number; y: number }) => {
+  const handleDragEnd = (_event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
     setIsDragging(false);
-    const newPos = { x: data.x, y: data.y };
-    setPosition(newPos);
-    // Check for collision/parenting on drop
+    const newPos = { x: x.get(), y: y.get() };
     onDrop(id, newPos);
   };
 
@@ -148,103 +165,115 @@ export function StickyNote({
     : undefined;
 
   return (
-    <Draggable
-      nodeRef={nodeRef}
-      position={position}
-      handle=".drag-handle"
-      onStart={handleDragStart}
+    <motion.div
+      drag
+      dragMomentum={false}
+      dragElastic={0.1}
+      dragTransition={{
+        bounceStiffness: 600,
+        bounceDamping: 20,
+        power: 0.3,
+      }}
+      style={{
+        x: springX,
+        y: springY,
+        rotate: initialRotation,
+        zIndex: isDragging ? 1000 : stackDepth + 1,
+        boxShadow: stackDepth > 0 ? `${stackDepth * 2}px ${stackDepth * 2}px 8px rgba(0,0,0,0.3)` : undefined,
+        ...backgroundStyle,
+      }}
+      onDragStart={handleDragStart}
       onDrag={handleDrag}
-      onStop={handleDragStop}
+      onDragEnd={handleDragEnd}
+      whileDrag={{ 
+        scale: 1.02,
+        boxShadow: "0 10px 30px rgba(0,0,0,0.3)",
+        cursor: "grabbing",
+      }}
+      transition={{
+        scale: { duration: 0.1 },
+        boxShadow: { duration: 0.1 },
+      }}
+      className={`absolute w-64 ${!color ? emotionClass : ''} border border-foreground cursor-grab ${dimmed ? 'opacity-10 pointer-events-none' : ''}`}
     >
-      <div
-        ref={nodeRef}
-        className={`absolute w-64 ${!color ? emotionClass : ''} border border-foreground transition-all duration-300 ${dimmed ? 'opacity-10 pointer-events-none' : ''}`}
-        style={{
-          transform: `rotate(${initialRotation}deg)`,
-          zIndex: isDragging ? 1000 : stackDepth + 1,
-          boxShadow: stackDepth > 0 ? `${stackDepth * 2}px ${stackDepth * 2}px 8px rgba(0,0,0,0.3)` : undefined,
-          ...backgroundStyle,
-        }}
-      >
-        {/* Header with drag handle */}
-        <div className="drag-handle flex items-center justify-between p-2 border-b border-current cursor-grab active:cursor-grabbing">
-          <div className="flex items-center gap-1">
-            <GripVertical size={16} className="opacity-50" />
-            {parentId && (
-              <Link2 size={12} className="opacity-50" />
-            )}
-          </div>
-          <div className="flex gap-1">
-            <ColorPicker currentColor={color} onColorSelect={handleColorChange} />
-            <button
-              onClick={handleToggleChat}
-              className={`p-1 hover:opacity-70 transition-opacity ${showChat ? 'opacity-100' : 'opacity-70'}`}
-              title="Chat with this note"
-            >
-              <MessageCircle size={16} fill={showChat ? 'currentColor' : 'none'} />
-            </button>
-            <button
-              onClick={() => onDelete(id)}
-              className="p-1 hover:opacity-70 transition-opacity"
-              title="Delete note"
-            >
-              <X size={16} />
-            </button>
-          </div>
+      {/* Header with drag handle */}
+      <div className="flex items-center justify-between p-2 border-b border-current">
+        <div className="flex items-center gap-1">
+          <GripVertical size={16} className="opacity-50" />
+          {parentId && (
+            <Link2 size={12} className="opacity-50" />
+          )}
         </div>
-
-        {/* Text area */}
-        <textarea
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          placeholder="type your thoughts..."
-          className="w-full h-32 p-3 bg-transparent resize-none focus:outline-none placeholder:opacity-50 font-mono text-sm"
-          style={{ color: 'inherit' }}
-        />
-
-        {/* Emotion indicator */}
-        <div className="px-3 pb-2 text-xs uppercase tracking-widest opacity-70 font-mono">
-          {color ? 'custom' : emotion}
+        <div className="flex gap-1">
+          <ColorPicker currentColor={color} onColorSelect={handleColorChange} />
+          <button
+            onClick={handleToggleChat}
+            className={`p-1 hover:opacity-70 transition-opacity ${showChat ? 'opacity-100' : 'opacity-70'}`}
+            title="Chat with this note"
+          >
+            <MessageCircle size={16} fill={showChat ? 'currentColor' : 'none'} />
+          </button>
+          <button
+            onClick={() => onDelete(id)}
+            className="p-1 hover:opacity-70 transition-opacity"
+            title="Delete note"
+          >
+            <X size={16} />
+          </button>
         </div>
-
-        {/* Inline Chat (multiplayer + AI) */}
-        {showChat && (
-          <div className="border-t border-current">
-            <div ref={chatScrollRef} className="note-chat-response max-h-40 overflow-y-auto">
-              {messages.map((msg) => (
-                <div 
-                  key={msg.id} 
-                  className={`mb-1 ${!msg.is_ai && msg.username !== username ? 'opacity-80' : ''} ${!msg.is_ai && msg.username === username ? 'opacity-60' : ''}`}
-                >
-                  <span className="font-bold text-xs">
-                    {msg.is_ai ? 'ai: ' : `${msg.username}: `}
-                  </span>
-                  <SmartText text={msg.content} />
-                </div>
-              ))}
-            </div>
-            
-            <div className="flex items-center border-t border-current">
-              <input
-                ref={chatInputRef}
-                type="text"
-                value={chatInput}
-                onChange={(e) => setChatInput(e.target.value)}
-                onKeyDown={handleKeyDown}
-                placeholder={`${username}: say something...`}
-                className="note-chat-input flex-1"
-              />
-              <button
-                onClick={handleSendMessage}
-                className="p-2 hover:opacity-70 transition-opacity"
-                title="Send message"
-              >
-                <Send size={14} />
-              </button>
-            </div>
-          </div>
-        )}
       </div>
-    </Draggable>
+
+      {/* Text area */}
+      <textarea
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        placeholder="type your thoughts..."
+        className="w-full h-32 p-3 bg-transparent resize-none focus:outline-none placeholder:opacity-50 font-mono text-sm"
+        style={{ color: 'inherit' }}
+      />
+
+      {/* Emotion indicator */}
+      <div className="px-3 pb-2 text-xs uppercase tracking-widest opacity-70 font-mono">
+        {color ? 'custom' : emotion}
+      </div>
+
+      {/* Inline Chat (multiplayer + AI) */}
+      {showChat && (
+        <div className="border-t border-current">
+          <div ref={chatScrollRef} className="note-chat-response max-h-40 overflow-y-auto">
+            {messages.map((msg) => (
+              <div 
+                key={msg.id} 
+                className={`mb-1 ${!msg.is_ai && msg.username !== username ? 'opacity-80' : ''} ${!msg.is_ai && msg.username === username ? 'opacity-60' : ''}`}
+              >
+                <span className="font-bold text-xs">
+                  {msg.is_ai ? 'ai: ' : `${msg.username}: `}
+                </span>
+                <SmartText text={msg.content} />
+              </div>
+            ))}
+          </div>
+          
+          <div className="flex items-center border-t border-current">
+            <input
+              ref={chatInputRef}
+              type="text"
+              value={chatInput}
+              onChange={(e) => setChatInput(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder={`${username}: say something...`}
+              className="note-chat-input flex-1"
+            />
+            <button
+              onClick={handleSendMessage}
+              className="p-2 hover:opacity-70 transition-opacity"
+              title="Send message"
+            >
+              <Send size={14} />
+            </button>
+          </div>
+        </div>
+      )}
+    </motion.div>
   );
 }
