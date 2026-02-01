@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
-import { motion, useMotionValue, useSpring, PanInfo, AnimatePresence } from 'framer-motion';
-import { MessageCircle, X, GripVertical, Send, Link2, RotateCcw } from 'lucide-react';
+import { motion, useMotionValue, useSpring, PanInfo } from 'framer-motion';
+import { MessageCircle, X, GripVertical, Send, Link2 } from 'lucide-react';
 import { useSentiment, getEmotionClass, EmotionType } from '@/hooks/useSentiment';
 import { getAIResponse, getAIChatResponse } from '@/utils/aiResponses';
 import { useNoteMessages } from '@/hooks/useNoteMessages';
@@ -49,7 +49,7 @@ export function StickyNote({
   const [showChat, setShowChat] = useState(false);
   const [chatInput, setChatInput] = useState('');
   const [isDragging, setIsDragging] = useState(false);
-  const [isFlipped, setIsFlipped] = useState(false);
+  const [isPeeled, setIsPeeled] = useState(false);
   
   const chatInputRef = useRef<HTMLInputElement>(null);
   const chatScrollRef = useRef<HTMLDivElement>(null);
@@ -170,11 +170,14 @@ export function StickyNote({
     onUpdate(id, { color: newColor });
   }, [id, onUpdate]);
 
-  const handleFlip = useCallback(() => {
-    if (!isDragging) {
-      setIsFlipped(prev => !prev);
-    }
-  }, [isDragging]);
+  const handlePeelStart = useCallback((e: React.MouseEvent | React.TouchEvent) => {
+    e.stopPropagation();
+    setIsPeeled(true);
+  }, []);
+
+  const handlePeelEnd = useCallback(() => {
+    setIsPeeled(false);
+  }, []);
 
   // Determine background style
   const backgroundStyle = color 
@@ -183,7 +186,7 @@ export function StickyNote({
 
   return (
     <motion.div
-      drag
+      drag={!isPeeled}
       dragMomentum={false}
       dragElastic={0.1}
       dragTransition={{
@@ -195,10 +198,9 @@ export function StickyNote({
         x: springX,
         y: springY,
         rotate: initialRotation,
-        zIndex: isDragging ? 1000 : (isFlipped ? 999 : stackDepth + 1),
+        zIndex: isDragging ? 1000 : (isPeeled ? 999 : stackDepth + 1),
         boxShadow: stackDepth > 0 ? `${stackDepth * 2}px ${stackDepth * 2}px 8px rgba(0,0,0,0.3)` : undefined,
-        perspective: 1000,
-        transformStyle: 'preserve-3d',
+        perspective: 800,
       }}
       onDragStart={handleDragStart}
       onDrag={handleDrag}
@@ -215,133 +217,113 @@ export function StickyNote({
       className={`absolute w-64 cursor-grab ${dimmed ? 'opacity-10 pointer-events-none' : ''}`}
     >
       <motion.div
-        animate={{ rotateY: isFlipped ? 180 : 0 }}
-        transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
+        animate={{ 
+          rotateX: isPeeled ? -60 : 0,
+          opacity: isPeeled ? 0.4 : 1,
+        }}
+        transition={{ 
+          type: 'spring',
+          stiffness: 400,
+          damping: 25,
+        }}
         style={{ 
+          transformOrigin: 'top center',
           transformStyle: 'preserve-3d',
           ...backgroundStyle,
         }}
         className={`relative w-full ${!color ? emotionClass : ''} border border-foreground`}
       >
-        {/* Front of note */}
-        <motion.div
-          style={{ backfaceVisibility: 'hidden' }}
-          className="w-full"
-        >
-          {/* Header with drag handle */}
-          <div className="flex items-center justify-between p-2 border-b border-current">
-            <div className="flex items-center gap-1">
-              <GripVertical size={16} className="opacity-50" />
-              {parentId && (
-                <Link2 size={12} className="opacity-50" />
-              )}
-            </div>
-            <div className="flex gap-1">
-              <button
-                onClick={handleFlip}
-                className="p-1 hover:opacity-70 transition-opacity"
-                title="Flip to see stacked notes"
-              >
-                <RotateCcw size={16} />
-              </button>
-              <ColorPicker currentColor={color} onColorSelect={handleColorChange} />
-              <button
-                onClick={handleToggleChat}
-                className={`p-1 hover:opacity-70 transition-opacity ${showChat ? 'opacity-100' : 'opacity-70'}`}
-                title="Chat with this note"
-              >
-                <MessageCircle size={16} fill={showChat ? 'currentColor' : 'none'} />
-              </button>
-              <button
-                onClick={() => onDelete(id)}
-                className="p-1 hover:opacity-70 transition-opacity"
-                title="Delete note"
-              >
-                <X size={16} />
-              </button>
-            </div>
+        {/* Header with drag handle */}
+        <div className="flex items-center justify-between p-2 border-b border-current">
+          <div className="flex items-center gap-1">
+            <GripVertical size={16} className="opacity-50" />
+            {parentId && (
+              <Link2 size={12} className="opacity-50" />
+            )}
           </div>
-
-          {/* Text area */}
-          <textarea
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            placeholder="type your thoughts..."
-            className="w-full h-32 p-3 bg-transparent resize-none focus:outline-none placeholder:opacity-50 font-mono text-sm"
-            style={{ color: 'inherit' }}
-          />
-
-          {/* Emotion indicator */}
-          <div className="px-3 pb-2 text-xs uppercase tracking-widest opacity-70 font-mono">
-            {color ? 'custom' : emotion}
-          </div>
-
-          {/* Inline Chat (multiplayer + AI) */}
-          {showChat && (
-            <div className="border-t border-current">
-              <div ref={chatScrollRef} className="note-chat-response max-h-40 overflow-y-auto">
-                {messages.map((msg) => (
-                  <div 
-                    key={msg.id} 
-                    className={`mb-1 ${!msg.is_ai && msg.username !== username ? 'opacity-80' : ''} ${!msg.is_ai && msg.username === username ? 'opacity-60' : ''}`}
-                  >
-                    <span className="font-bold text-xs">
-                      {msg.is_ai ? 'ai: ' : `${msg.username}: `}
-                    </span>
-                    <SmartText text={msg.content} />
-                  </div>
-                ))}
-              </div>
-              
-              <div className="flex items-center border-t border-current">
-                <input
-                  ref={chatInputRef}
-                  type="text"
-                  value={chatInput}
-                  onChange={(e) => setChatInput(e.target.value)}
-                  onKeyDown={handleKeyDown}
-                  placeholder={`${username}: say something...`}
-                  className="note-chat-input flex-1"
-                />
-                <button
-                  onClick={handleSendMessage}
-                  className="p-2 hover:opacity-70 transition-opacity"
-                  title="Send message"
-                >
-                  <Send size={14} />
-                </button>
-              </div>
-            </div>
-          )}
-        </motion.div>
-
-        {/* Back of note - shown when flipped */}
-        <motion.div
-          style={{ 
-            backfaceVisibility: 'hidden',
-            rotateY: 180,
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            width: '100%',
-            height: '100%',
-          }}
-          className={`${!color ? emotionClass : ''} border border-foreground opacity-30`}
-        >
-          <div className="flex items-center justify-between p-2 border-b border-current">
-            <span className="text-xs font-mono opacity-70">viewing stack...</span>
+          <div className="flex gap-1">
+            <ColorPicker currentColor={color} onColorSelect={handleColorChange} />
             <button
-              onClick={handleFlip}
-              className="p-1 hover:opacity-70 transition-opacity"
-              title="Flip back"
+              onClick={handleToggleChat}
+              className={`p-1 hover:opacity-70 transition-opacity ${showChat ? 'opacity-100' : 'opacity-70'}`}
+              title="Chat with this note"
             >
-              <RotateCcw size={16} />
+              <MessageCircle size={16} fill={showChat ? 'currentColor' : 'none'} />
+            </button>
+            <button
+              onClick={() => onDelete(id)}
+              className="p-1 hover:opacity-70 transition-opacity"
+              title="Delete note"
+            >
+              <X size={16} />
             </button>
           </div>
-          <div className="p-3 text-xs font-mono opacity-70">
-            Click the flip button to return
+        </div>
+
+        {/* Text area */}
+        <textarea
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          placeholder="type your thoughts..."
+          className="w-full h-32 p-3 bg-transparent resize-none focus:outline-none placeholder:opacity-50 font-mono text-sm"
+          style={{ color: 'inherit' }}
+        />
+
+        {/* Emotion indicator */}
+        <div className="px-3 pb-2 text-xs uppercase tracking-widest opacity-70 font-mono">
+          {color ? 'custom' : emotion}
+        </div>
+
+        {/* Inline Chat (multiplayer + AI) */}
+        {showChat && (
+          <div className="border-t border-current">
+            <div ref={chatScrollRef} className="note-chat-response max-h-40 overflow-y-auto">
+              {messages.map((msg) => (
+                <div 
+                  key={msg.id} 
+                  className={`mb-1 ${!msg.is_ai && msg.username !== username ? 'opacity-80' : ''} ${!msg.is_ai && msg.username === username ? 'opacity-60' : ''}`}
+                >
+                  <span className="font-bold text-xs">
+                    {msg.is_ai ? 'ai: ' : `${msg.username}: `}
+                  </span>
+                  <SmartText text={msg.content} />
+                </div>
+              ))}
+            </div>
+            
+            <div className="flex items-center border-t border-current">
+              <input
+                ref={chatInputRef}
+                type="text"
+                value={chatInput}
+                onChange={(e) => setChatInput(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder={`${username}: say something...`}
+                className="note-chat-input flex-1"
+              />
+              <button
+                onClick={handleSendMessage}
+                className="p-2 hover:opacity-70 transition-opacity"
+                title="Send message"
+              >
+                <Send size={14} />
+              </button>
+            </div>
           </div>
-        </motion.div>
+        )}
+
+        {/* Peel handle at bottom edge */}
+        <div
+          onMouseDown={handlePeelStart}
+          onMouseUp={handlePeelEnd}
+          onMouseLeave={handlePeelEnd}
+          onTouchStart={handlePeelStart}
+          onTouchEnd={handlePeelEnd}
+          className="absolute bottom-0 left-0 right-0 h-4 cursor-ns-resize flex items-center justify-center opacity-30 hover:opacity-60 transition-opacity"
+          title="Hold to peek behind"
+        >
+          <div className="w-12 h-1 bg-current rounded-full" />
+        </div>
       </motion.div>
     </motion.div>
   );
