@@ -7,6 +7,7 @@ export interface Note {
   position: { x: number; y: number };
   rotation: number;
   parent_id: string | null;
+  color: string | null;
 }
 
 function generateId(): string {
@@ -46,6 +47,7 @@ export function useNotes() {
           position: { x: n.position_x, y: n.position_y },
           rotation: n.rotation,
           parent_id: n.parent_id,
+          color: n.color ?? null,
         })));
       }
       setIsLoading(false);
@@ -72,13 +74,14 @@ export function useNotes() {
                 position: { x: n.position_x, y: n.position_y },
                 rotation: n.rotation,
                 parent_id: n.parent_id,
+                color: n.color ?? null,
               }];
             });
           } else if (payload.eventType === 'UPDATE') {
             const n = payload.new as any;
             setNotes(prev => prev.map(note => 
               note.id === n.id 
-                ? { ...note, text: n.text, position: { x: n.position_x, y: n.position_y } }
+                ? { ...note, text: n.text, position: { x: n.position_x, y: n.position_y }, color: n.color ?? null, parent_id: n.parent_id }
                 : note
             ));
           } else if (payload.eventType === 'DELETE') {
@@ -108,6 +111,7 @@ export function useNotes() {
       position,
       rotation,
       parent_id: parentId || null,
+      color: null,
     };
     setNotes(prev => [...prev, newNote]);
 
@@ -119,12 +123,13 @@ export function useNotes() {
       position_y: position.y,
       rotation,
       parent_id: parentId || null,
+      color: null,
     });
 
     return id;
   }, []);
 
-  const updateNote = useCallback(async (id: string, updates: Partial<Pick<Note, 'text' | 'position'>>) => {
+  const updateNote = useCallback(async (id: string, updates: Partial<Pick<Note, 'text' | 'position' | 'color' | 'parent_id'>>) => {
     // Optimistic update
     setNotes(prev => prev.map(note => 
       note.id === id ? { ...note, ...updates } : note
@@ -137,6 +142,8 @@ export function useNotes() {
       dbUpdates.position_x = updates.position.x;
       dbUpdates.position_y = updates.position.y;
     }
+    if (updates.color !== undefined) dbUpdates.color = updates.color;
+    if (updates.parent_id !== undefined) dbUpdates.parent_id = updates.parent_id;
     
     await supabase.from('notes').update(dbUpdates).eq('id', id);
   }, []);

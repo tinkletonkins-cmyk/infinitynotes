@@ -1,29 +1,99 @@
-import { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { Plus, Loader2 } from 'lucide-react';
 import { StickyNote } from './StickyNote';
 import { Switch } from '@/components/ui/switch';
-import { useNotes } from '@/hooks/useNotes';
+import { useNotes, Note } from '@/hooks/useNotes';
+
+const NOTE_WIDTH = 256;
+const NOTE_HEIGHT = 200;
+
+function notesOverlap(
+  pos1: { x: number; y: number },
+  pos2: { x: number; y: number }
+): boolean {
+  const overlap = 50; // Minimum overlap pixels to trigger parenting
+  return (
+    Math.abs(pos1.x - pos2.x) < NOTE_WIDTH - overlap &&
+    Math.abs(pos1.y - pos2.y) < NOTE_HEIGHT - overlap
+  );
+}
 
 export function VoidBoard() {
   const { notes, isLoading, addNote, updateNote, deleteNote } = useNotes();
+  const [isBoardMode, setIsBoardMode] = useState(false);
+
+  // Build parent-child relationships map
+  const childrenMap = useMemo(() => {
+    const map = new Map<string, Note[]>();
+    notes.forEach(note => {
+      if (note.parent_id) {
+        const children = map.get(note.parent_id) || [];
+        children.push(note);
+        map.set(note.parent_id, children);
+      }
+    });
+    return map;
+  }, [notes]);
 
   const handleAddNote = useCallback(() => {
     addNote();
   }, [addNote]);
 
-  const handleStackNote = useCallback((parentId: string, parentPosition: { x: number; y: number }) => {
-    addNote(parentId, parentPosition);
-  }, [addNote]);
+  // Handle dropping a note - check for collision to parent it
+  const handleNoteDrop = useCallback((
+    droppedId: string,
+    newPosition: { x: number; y: number }
+  ) => {
+    const droppedNote = notes.find(n => n.id === droppedId);
+    if (!droppedNote) return;
 
-  const handleUpdateNote = useCallback((id: string, updates: { text?: string; position?: { x: number; y: number } }) => {
+    // Find overlapping note to parent to (excluding self and current parent)
+    const targetNote = notes.find(n => 
+      n.id !== droppedId && 
+      n.id !== droppedNote.parent_id &&
+      notesOverlap(newPosition, n.position)
+    );
+
+    if (targetNote) {
+      // Parent the dropped note to the target
+      updateNote(droppedId, { position: newPosition, parent_id: targetNote.id });
+    } else {
+      // Just update position, clear parent if no overlap
+      updateNote(droppedId, { position: newPosition, parent_id: null });
+    }
+  }, [notes, updateNote]);
+
+  // Handle dragging a parent - move all children with it
+  const handleNoteDrag = useCallback((
+    parentId: string,
+    deltaX: number,
+    deltaY: number
+  ) => {
+    const children = childrenMap.get(parentId) || [];
+    children.forEach(child => {
+      const newPos = {
+        x: child.position.x + deltaX,
+        y: child.position.y + deltaY,
+      };
+      updateNote(child.id, { position: newPos });
+    });
+  }, [childrenMap, updateNote]);
+
+  const handleUpdateNote = useCallback((
+    id: string, 
+    updates: { text?: string; position?: { x: number; y: number }; color?: string | null }
+  ) => {
     updateNote(id, updates);
   }, [updateNote]);
 
   const handleDeleteNote = useCallback((id: string) => {
+    // When deleting a parent, unparent all children
+    const children = childrenMap.get(id) || [];
+    children.forEach(child => {
+      updateNote(child.id, { parent_id: null });
+    });
     deleteNote(id);
-  }, [deleteNote]);
-
-  const [isBoardMode, setIsBoardMode] = useState(false);
+  }, [deleteNote, childrenMap, updateNote]);
 
   return (
     <div className={`void-board relative ${isBoardMode ? 'mode-board' : ''}`}>
@@ -65,9 +135,12 @@ export function VoidBoard() {
             initialText={note.text}
             initialPosition={note.position}
             initialRotation={note.rotation}
+            initialColor={note.color}
+            parentId={note.parent_id}
             onDelete={handleDeleteNote}
             onUpdate={handleUpdateNote}
-            onStack={handleStackNote}
+            onDrop={handleNoteDrop}
+            onDrag={handleNoteDrag}
           />
         ))}
 
