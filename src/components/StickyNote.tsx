@@ -14,6 +14,8 @@ interface StickyNoteProps {
   initialRotation: number;
   initialColor: string | null;
   parentId: string | null;
+  stackDepth: number;
+  dimmed: boolean;
   onDelete: (id: string) => void;
   onUpdate: (id: string, updates: { text?: string; position?: { x: number; y: number }; color?: string | null }) => void;
   onDrop: (id: string, position: { x: number; y: number }) => void;
@@ -27,6 +29,8 @@ export function StickyNote({
   initialRotation,
   initialColor,
   parentId,
+  stackDepth,
+  dimmed,
   onDelete, 
   onUpdate,
   onDrop,
@@ -154,10 +158,11 @@ export function StickyNote({
     >
       <div
         ref={nodeRef}
-        className={`absolute w-64 ${!color ? emotionClass : ''} border border-foreground transition-colors duration-300`}
+        className={`absolute w-64 ${!color ? emotionClass : ''} border border-foreground transition-all duration-300 ${dimmed ? 'opacity-10 pointer-events-none' : ''}`}
         style={{
           transform: `rotate(${initialRotation}deg)`,
-          zIndex: isDragging ? 1000 : parentId ? 2 : 1,
+          zIndex: isDragging ? 1000 : stackDepth + 1,
+          boxShadow: stackDepth > 0 ? `${stackDepth * 2}px ${stackDepth * 2}px 8px rgba(0,0,0,0.3)` : undefined,
           ...backgroundStyle,
         }}
       >
