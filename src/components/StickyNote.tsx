@@ -1,35 +1,44 @@
-import { useState, useCallback, useRef, useEffect } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import Draggable from 'react-draggable';
-import { MessageCircle, X, GripVertical, Send, Layers } from 'lucide-react';
+import { MessageCircle, X, GripVertical, Send, Link2 } from 'lucide-react';
 import { useSentiment, getEmotionClass, EmotionType } from '@/hooks/useSentiment';
 import { getAIResponse, getAIChatResponse } from '@/utils/aiResponses';
 import { useNoteMessages } from '@/hooks/useNoteMessages';
 import { SmartText } from './SmartText';
+import { ColorPicker } from './ColorPicker';
 
 interface StickyNoteProps {
   id: string;
   initialText: string;
   initialPosition: { x: number; y: number };
   initialRotation: number;
+  initialColor: string | null;
+  parentId: string | null;
   onDelete: (id: string) => void;
-  onUpdate: (id: string, updates: { text?: string; position?: { x: number; y: number } }) => void;
-  onStack: (parentId: string, position: { x: number; y: number }) => void;
+  onUpdate: (id: string, updates: { text?: string; position?: { x: number; y: number }; color?: string | null }) => void;
+  onDrop: (id: string, position: { x: number; y: number }) => void;
+  onDrag: (parentId: string, deltaX: number, deltaY: number) => void;
 }
 
 export function StickyNote({ 
   id, 
   initialText, 
   initialPosition, 
-  initialRotation, 
+  initialRotation,
+  initialColor,
+  parentId,
   onDelete, 
   onUpdate,
-  onStack 
+  onDrop,
+  onDrag,
 }: StickyNoteProps) {
   const [text, setText] = useState(initialText);
+  const [color, setColor] = useState<string | null>(initialColor);
   const [showChat, setShowChat] = useState(false);
   const [chatInput, setChatInput] = useState('');
   const [isDragging, setIsDragging] = useState(false);
   const [position, setPosition] = useState(initialPosition);
+  const lastPositionRef = useRef(initialPosition);
   const nodeRef = useRef<HTMLDivElement>(null);
   const chatInputRef = useRef<HTMLInputElement>(null);
   const chatScrollRef = useRef<HTMLDivElement>(null);
@@ -37,6 +46,17 @@ export function StickyNote({
   const { messages, username, sendMessage } = useNoteMessages(id);
   const emotion: EmotionType = useSentiment(text);
   const emotionClass = getEmotionClass(emotion);
+
+  // Sync position from props (for when parent drags this child)
+  useEffect(() => {
+    setPosition(initialPosition);
+    lastPositionRef.current = initialPosition;
+  }, [initialPosition]);
+
+  // Sync color from props
+  useEffect(() => {
+    setColor(initialColor);
+  }, [initialColor]);
 
   // Sync text changes to database (debounced)
   useEffect(() => {
@@ -57,7 +77,6 @@ export function StickyNote({
 
   const handleToggleChat = useCallback(() => {
     if (!showChat) {
-      // Opening chat - add AI greeting if no messages yet
       if (messages.length === 0) {
         const greeting = getAIResponse(emotion, text);
         sendMessage(greeting, true);
@@ -76,10 +95,8 @@ export function StickyNote({
     const userMessage = chatInput.trim();
     setChatInput('');
     
-    // Send user message
     await sendMessage(userMessage, false);
 
-    // AI responds based on note's current emotion
     setTimeout(() => {
       const aiResponse = getAIChatResponse(emotion, userMessage);
       sendMessage(aiResponse, true);
@@ -93,45 +110,67 @@ export function StickyNote({
     }
   }, [handleSendMessage]);
 
-  const handleDragStart = () => setIsDragging(true);
+  const handleDragStart = () => {
+    setIsDragging(true);
+    lastPositionRef.current = position;
+  };
+
+  const handleDrag = (_e: any, data: { x: number; y: number }) => {
+    const deltaX = data.x - lastPositionRef.current.x;
+    const deltaY = data.y - lastPositionRef.current.y;
+    
+    // Move children along with this note
+    onDrag(id, deltaX, deltaY);
+    
+    lastPositionRef.current = { x: data.x, y: data.y };
+  };
+
   const handleDragStop = (_e: any, data: { x: number; y: number }) => {
     setIsDragging(false);
     const newPos = { x: data.x, y: data.y };
     setPosition(newPos);
-    onUpdate(id, { position: newPos });
+    // Check for collision/parenting on drop
+    onDrop(id, newPos);
   };
 
-  const handleStack = () => {
-    onStack(id, position);
-  };
+  const handleColorChange = useCallback((newColor: string | null) => {
+    setColor(newColor);
+    onUpdate(id, { color: newColor });
+  }, [id, onUpdate]);
+
+  // Determine background style
+  const backgroundStyle = color 
+    ? { backgroundColor: color }
+    : undefined;
 
   return (
     <Draggable
       nodeRef={nodeRef}
-      defaultPosition={initialPosition}
+      position={position}
       handle=".drag-handle"
       onStart={handleDragStart}
+      onDrag={handleDrag}
       onStop={handleDragStop}
     >
       <div
         ref={nodeRef}
-        className={`absolute w-64 ${emotionClass} border border-foreground transition-colors duration-300`}
+        className={`absolute w-64 ${!color ? emotionClass : ''} border border-foreground transition-colors duration-300`}
         style={{
           transform: `rotate(${initialRotation}deg)`,
-          zIndex: isDragging ? 1000 : 1,
+          zIndex: isDragging ? 1000 : parentId ? 2 : 1,
+          ...backgroundStyle,
         }}
       >
         {/* Header with drag handle */}
         <div className="drag-handle flex items-center justify-between p-2 border-b border-current cursor-grab active:cursor-grabbing">
-          <GripVertical size={16} className="opacity-50" />
+          <div className="flex items-center gap-1">
+            <GripVertical size={16} className="opacity-50" />
+            {parentId && (
+              <Link2 size={12} className="opacity-50" />
+            )}
+          </div>
           <div className="flex gap-1">
-            <button
-              onClick={handleStack}
-              className="p-1 hover:opacity-70 transition-opacity opacity-70"
-              title="Stack a new note"
-            >
-              <Layers size={16} />
-            </button>
+            <ColorPicker currentColor={color} onColorSelect={handleColorChange} />
             <button
               onClick={handleToggleChat}
               className={`p-1 hover:opacity-70 transition-opacity ${showChat ? 'opacity-100' : 'opacity-70'}`}
@@ -160,13 +199,12 @@ export function StickyNote({
 
         {/* Emotion indicator */}
         <div className="px-3 pb-2 text-xs uppercase tracking-widest opacity-70 font-mono">
-          {emotion}
+          {color ? 'custom' : emotion}
         </div>
 
         {/* Inline Chat (multiplayer + AI) */}
         {showChat && (
           <div className="border-t border-current">
-            {/* Chat messages */}
             <div ref={chatScrollRef} className="note-chat-response max-h-40 overflow-y-auto">
               {messages.map((msg) => (
                 <div 
@@ -181,7 +219,6 @@ export function StickyNote({
               ))}
             </div>
             
-            {/* Chat input */}
             <div className="flex items-center border-t border-current">
               <input
                 ref={chatInputRef}
