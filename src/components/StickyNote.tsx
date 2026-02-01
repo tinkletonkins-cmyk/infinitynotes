@@ -216,18 +216,31 @@ export function StickyNote({
       }}
       className={`absolute w-64 cursor-grab ${dimmed ? 'opacity-10 pointer-events-none' : ''}`}
     >
+      {/* Peel handle at TOP edge - click and hold to fold back */}
+      <div
+        onMouseDown={handlePeelStart}
+        onMouseUp={handlePeelEnd}
+        onMouseLeave={handlePeelEnd}
+        onTouchStart={handlePeelStart}
+        onTouchEnd={handlePeelEnd}
+        className="absolute top-0 left-0 right-0 h-5 cursor-n-resize flex items-center justify-center z-50 opacity-0 hover:opacity-60 transition-opacity"
+        title="Hold to peek behind"
+      >
+        <div className="w-12 h-1 bg-current rounded-full mt-1" />
+      </div>
+
       <motion.div
         animate={{ 
-          rotateX: isPeeled ? -60 : 0,
+          rotateX: isPeeled ? 70 : 0,
           opacity: isPeeled ? 0.4 : 1,
         }}
         transition={{ 
           type: 'spring',
-          stiffness: 400,
-          damping: 25,
+          stiffness: 500,
+          damping: 30,
         }}
         style={{ 
-          transformOrigin: 'top center',
+          transformOrigin: 'bottom center',
           transformStyle: 'preserve-3d',
           ...backgroundStyle,
         }}
@@ -311,19 +324,6 @@ export function StickyNote({
             </div>
           </div>
         )}
-
-        {/* Peel handle at bottom edge */}
-        <div
-          onMouseDown={handlePeelStart}
-          onMouseUp={handlePeelEnd}
-          onMouseLeave={handlePeelEnd}
-          onTouchStart={handlePeelStart}
-          onTouchEnd={handlePeelEnd}
-          className="absolute bottom-0 left-0 right-0 h-4 cursor-ns-resize flex items-center justify-center opacity-30 hover:opacity-60 transition-opacity"
-          title="Hold to peek behind"
-        >
-          <div className="w-12 h-1 bg-current rounded-full" />
-        </div>
       </motion.div>
     </motion.div>
   );

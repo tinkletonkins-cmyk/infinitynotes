@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useRef } from 'react';
 import { Plus, Loader2, Eye, EyeOff } from 'lucide-react';
 import { StickyNote } from './StickyNote';
 import { Switch } from '@/components/ui/switch';
@@ -10,16 +10,29 @@ import { NotePositionsProvider } from '@/contexts/NotePositionsContext';
 const NOTE_WIDTH = 256;
 const NOTE_HEIGHT = 200;
 const STACK_OFFSET = 15; // Visual offset for stacked notes
+const SNAP_THRESHOLD = 80; // How close notes need to be to stack
+const DETACH_THRESHOLD = 100; // How far to drag to detach from stack
 
 function notesOverlap(
   pos1: { x: number; y: number },
   pos2: { x: number; y: number }
 ): boolean {
-  const overlap = 50;
+  // Check if notes are close enough to stack
   return (
-    Math.abs(pos1.x - pos2.x) < NOTE_WIDTH - overlap &&
-    Math.abs(pos1.y - pos2.y) < NOTE_HEIGHT - overlap
+    Math.abs(pos1.x - pos2.x) < SNAP_THRESHOLD &&
+    Math.abs(pos1.y - pos2.y) < SNAP_THRESHOLD
   );
+}
+
+function shouldDetach(
+  originalPos: { x: number; y: number },
+  newPos: { x: number; y: number }
+): boolean {
+  const distance = Math.sqrt(
+    Math.pow(newPos.x - originalPos.x, 2) + 
+    Math.pow(newPos.y - originalPos.y, 2)
+  );
+  return distance > DETACH_THRESHOLD;
 }
 
 function noteMatchesSearch(note: Note, query: string): boolean {
@@ -32,6 +45,9 @@ export function VoidBoard() {
   const [isBoardMode, setIsBoardMode] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [showLines, setShowLines] = useState(true);
+  
+  // Track original positions for detecting detachment
+  const originalPositionsRef = useRef<Map<string, { x: number; y: number }>>(new Map());
 
   // Build parent-child relationships map
   const childrenMap = useMemo(() => {
@@ -92,25 +108,65 @@ export function VoidBoard() {
     const droppedNote = notes.find(n => n.id === droppedId);
     if (!droppedNote) return;
 
+    const originalPos = originalPositionsRef.current.get(droppedId);
+    
+    // Check if note should detach from current parent
+    if (droppedNote.parent_id && originalPos && shouldDetach(originalPos, newPosition)) {
+      // Detach from parent - just update position, clear parent
+      updateNote(droppedId, { position: newPosition, parent_id: null });
+      originalPositionsRef.current.delete(droppedId);
+      return;
+    }
+
+    // Find a note to stack onto (exclude self and current parent)
     const targetNote = notes.find(n => 
       n.id !== droppedId && 
       n.id !== droppedNote.parent_id &&
+      !isDescendantOf(droppedId, n.id, notes) && // Prevent circular stacking
       notesOverlap(newPosition, n.position)
     );
 
     if (targetNote) {
-      // Apply stack offset when parenting
+      // Snap to stack position with offset
       const targetDepth = stackDepths.get(targetNote.id) || 0;
       const offset = (targetDepth + 1) * STACK_OFFSET;
       const stackedPosition = {
         x: targetNote.position.x + offset,
         y: targetNote.position.y + offset,
       };
+      // Store original position for potential detachment later
+      originalPositionsRef.current.set(droppedId, stackedPosition);
       updateNote(droppedId, { position: stackedPosition, parent_id: targetNote.id });
-    } else {
+    } else if (!droppedNote.parent_id) {
+      // Free note, just update position
       updateNote(droppedId, { position: newPosition, parent_id: null });
+    } else {
+      // Has parent but didn't detach - snap back to stacked position
+      const parent = notes.find(n => n.id === droppedNote.parent_id);
+      if (parent) {
+        const parentDepth = stackDepths.get(parent.id) || 0;
+        const offset = (parentDepth + 1) * STACK_OFFSET;
+        const stackedPosition = {
+          x: parent.position.x + offset,
+          y: parent.position.y + offset,
+        };
+        updateNote(droppedId, { position: stackedPosition });
+      }
     }
   }, [notes, updateNote, stackDepths]);
+
+  // Helper to check if noteA is a descendant of noteB
+  function isDescendantOf(noteAId: string, noteBId: string, allNotes: Note[]): boolean {
+    const noteB = allNotes.find(n => n.id === noteBId);
+    if (!noteB) return false;
+    let current = noteB.parent_id;
+    while (current) {
+      if (current === noteAId) return true;
+      const parent = allNotes.find(n => n.id === current);
+      current = parent?.parent_id || null;
+    }
+    return false;
+  }
 
   const handleNoteDrag = useCallback((
     parentId: string,
