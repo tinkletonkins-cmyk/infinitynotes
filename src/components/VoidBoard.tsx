@@ -3,24 +3,33 @@ import { Plus, Loader2 } from 'lucide-react';
 import { StickyNote } from './StickyNote';
 import { Switch } from '@/components/ui/switch';
 import { useNotes, Note } from '@/hooks/useNotes';
+import { ConnectionsOverlay } from './ConnectionsOverlay';
+import { SearchBar } from './SearchBar';
 
 const NOTE_WIDTH = 256;
 const NOTE_HEIGHT = 200;
+const STACK_OFFSET = 15; // Visual offset for stacked notes
 
 function notesOverlap(
   pos1: { x: number; y: number },
   pos2: { x: number; y: number }
 ): boolean {
-  const overlap = 50; // Minimum overlap pixels to trigger parenting
+  const overlap = 50;
   return (
     Math.abs(pos1.x - pos2.x) < NOTE_WIDTH - overlap &&
     Math.abs(pos1.y - pos2.y) < NOTE_HEIGHT - overlap
   );
 }
 
+function noteMatchesSearch(note: Note, query: string): boolean {
+  if (!query.trim()) return true;
+  return note.text.toLowerCase().includes(query.toLowerCase());
+}
+
 export function VoidBoard() {
   const { notes, isLoading, addNote, updateNote, deleteNote } = useNotes();
   const [isBoardMode, setIsBoardMode] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
   // Build parent-child relationships map
   const childrenMap = useMemo(() => {
@@ -35,11 +44,35 @@ export function VoidBoard() {
     return map;
   }, [notes]);
 
+  // Calculate stack depth for each note (for visual offset)
+  const stackDepths = useMemo(() => {
+    const depths = new Map<string, number>();
+    
+    const getDepth = (noteId: string): number => {
+      if (depths.has(noteId)) return depths.get(noteId)!;
+      const note = notes.find(n => n.id === noteId);
+      if (!note || !note.parent_id) {
+        depths.set(noteId, 0);
+        return 0;
+      }
+      const parentDepth = getDepth(note.parent_id);
+      depths.set(noteId, parentDepth + 1);
+      return parentDepth + 1;
+    };
+    
+    notes.forEach(note => getDepth(note.id));
+    return depths;
+  }, [notes]);
+
+  // Filter notes based on search
+  const filteredNotes = useMemo(() => {
+    return notes.filter(note => noteMatchesSearch(note, searchQuery));
+  }, [notes, searchQuery]);
+
   const handleAddNote = useCallback(() => {
     addNote();
   }, [addNote]);
 
-  // Handle dropping a note - check for collision to parent it
   const handleNoteDrop = useCallback((
     droppedId: string,
     newPosition: { x: number; y: number }
@@ -47,7 +80,6 @@ export function VoidBoard() {
     const droppedNote = notes.find(n => n.id === droppedId);
     if (!droppedNote) return;
 
-    // Find overlapping note to parent to (excluding self and current parent)
     const targetNote = notes.find(n => 
       n.id !== droppedId && 
       n.id !== droppedNote.parent_id &&
@@ -55,15 +87,19 @@ export function VoidBoard() {
     );
 
     if (targetNote) {
-      // Parent the dropped note to the target
-      updateNote(droppedId, { position: newPosition, parent_id: targetNote.id });
+      // Apply stack offset when parenting
+      const targetDepth = stackDepths.get(targetNote.id) || 0;
+      const offset = (targetDepth + 1) * STACK_OFFSET;
+      const stackedPosition = {
+        x: targetNote.position.x + offset,
+        y: targetNote.position.y + offset,
+      };
+      updateNote(droppedId, { position: stackedPosition, parent_id: targetNote.id });
     } else {
-      // Just update position, clear parent if no overlap
       updateNote(droppedId, { position: newPosition, parent_id: null });
     }
-  }, [notes, updateNote]);
+  }, [notes, updateNote, stackDepths]);
 
-  // Handle dragging a parent - move all children with it
   const handleNoteDrag = useCallback((
     parentId: string,
     deltaX: number,
@@ -87,7 +123,6 @@ export function VoidBoard() {
   }, [updateNote]);
 
   const handleDeleteNote = useCallback((id: string) => {
-    // When deleting a parent, unparent all children
     const children = childrenMap.get(id) || [];
     children.forEach(child => {
       updateNote(child.id, { parent_id: null });
@@ -97,12 +132,23 @@ export function VoidBoard() {
 
   return (
     <div className={`void-board relative ${isBoardMode ? 'mode-board' : ''}`}>
+      {/* SVG Connections Overlay */}
+      <ConnectionsOverlay notes={notes} searchQuery={searchQuery} />
+
       {/* Title */}
       <header className="fixed top-0 left-0 right-0 z-40 p-4 border-b border-foreground bg-background">
         <h1 className="text-xl font-bold uppercase tracking-[0.5em] text-center">
           THE MULTIPLAYER VOID
         </h1>
       </header>
+
+      {/* Search Bar */}
+      <SearchBar 
+        query={searchQuery}
+        onQueryChange={setSearchQuery}
+        resultCount={filteredNotes.length}
+        totalCount={notes.length}
+      />
 
       {/* Mode toggle */}
       <div className="mode-toggle">
@@ -128,21 +174,28 @@ export function VoidBoard() {
 
       {/* Notes container */}
       <div className="pt-16 min-h-screen">
-        {notes.map((note) => (
-          <StickyNote
-            key={note.id}
-            id={note.id}
-            initialText={note.text}
-            initialPosition={note.position}
-            initialRotation={note.rotation}
-            initialColor={note.color}
-            parentId={note.parent_id}
-            onDelete={handleDeleteNote}
-            onUpdate={handleUpdateNote}
-            onDrop={handleNoteDrop}
-            onDrag={handleNoteDrag}
-          />
-        ))}
+        {notes.map((note) => {
+          const isMatch = noteMatchesSearch(note, searchQuery);
+          const stackDepth = stackDepths.get(note.id) || 0;
+          
+          return (
+            <StickyNote
+              key={note.id}
+              id={note.id}
+              initialText={note.text}
+              initialPosition={note.position}
+              initialRotation={note.rotation}
+              initialColor={note.color}
+              parentId={note.parent_id}
+              stackDepth={stackDepth}
+              dimmed={searchQuery.trim() !== '' && !isMatch}
+              onDelete={handleDeleteNote}
+              onUpdate={handleUpdateNote}
+              onDrop={handleNoteDrop}
+              onDrag={handleNoteDrag}
+            />
+          );
+        })}
 
         {/* Empty state */}
         {!isLoading && notes.length === 0 && (
