@@ -49,19 +49,29 @@ export function VoidBoard() {
   const stackDepths = useMemo(() => {
     const depths = new Map<string, number>();
     
-    const getDepth = (noteId: string): number => {
+    const getDepth = (noteId: string, visited: Set<string> = new Set()): number => {
+      // Already computed
       if (depths.has(noteId)) return depths.get(noteId)!;
+      
+      // Cycle detection - prevent infinite recursion
+      if (visited.has(noteId)) {
+        depths.set(noteId, 0);
+        return 0;
+      }
+      visited.add(noteId);
+      
       const note = notes.find(n => n.id === noteId);
       if (!note || !note.parent_id) {
         depths.set(noteId, 0);
         return 0;
       }
-      const parentDepth = getDepth(note.parent_id);
+      
+      const parentDepth = getDepth(note.parent_id, visited);
       depths.set(noteId, parentDepth + 1);
       return parentDepth + 1;
     };
     
-    notes.forEach(note => getDepth(note.id));
+    notes.forEach(note => getDepth(note.id, new Set()));
     return depths;
   }, [notes]);
 
