@@ -5,6 +5,7 @@ import { Switch } from '@/components/ui/switch';
 import { useNotes, Note } from '@/hooks/useNotes';
 import { ConnectionsOverlay } from './ConnectionsOverlay';
 import { SearchBar } from './SearchBar';
+import { NotePositionsProvider } from '@/contexts/NotePositionsContext';
 
 const NOTE_WIDTH = 256;
 const NOTE_HEIGHT = 200;
@@ -142,106 +143,108 @@ export function VoidBoard() {
   }, [deleteNote, childrenMap, updateNote]);
 
   return (
-    <div className={`void-board relative ${isBoardMode ? 'mode-board' : ''}`}>
-      {/* SVG Connections Overlay */}
-      <ConnectionsOverlay notes={notes} searchQuery={searchQuery} visible={showLines} />
+    <NotePositionsProvider>
+      <div className={`void-board relative ${isBoardMode ? 'mode-board' : ''}`}>
+        {/* SVG Connections Overlay */}
+        <ConnectionsOverlay notes={notes} searchQuery={searchQuery} visible={showLines} />
 
-      {/* Title */}
-      <header className="fixed top-0 left-0 right-0 z-40 p-4 border-b border-foreground bg-background">
-        <h1 className="text-xl font-bold uppercase tracking-[0.5em] text-center">
-          THE MULTIPLAYER VOID
-        </h1>
-      </header>
+        {/* Title */}
+        <header className="fixed top-0 left-0 right-0 z-40 p-4 border-b border-foreground bg-background">
+          <h1 className="text-xl font-bold uppercase tracking-[0.5em] text-center">
+            THE MULTIPLAYER VOID
+          </h1>
+        </header>
 
-      {/* Search Bar and Connections Toggle */}
-      <div className="fixed top-16 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2">
-        <SearchBar 
-          query={searchQuery}
-          onQueryChange={setSearchQuery}
-          resultCount={filteredNotes.length}
-          totalCount={notes.length}
-        />
-        <button
-          onClick={() => setShowLines(!showLines)}
-          className="flex items-center gap-2 px-3 py-2 bg-background border border-foreground hover:bg-foreground hover:text-background transition-colors"
-          title={showLines ? 'Hide connections' : 'Show connections'}
-        >
-          {showLines ? <Eye size={16} /> : <EyeOff size={16} />}
-          <span className="text-xs uppercase tracking-wider font-mono hidden sm:inline">Lines</span>
-        </button>
-      </div>
-
-      {/* Mode toggle */}
-      <div className="mode-toggle">
-        <span className={`mode-toggle-label ${!isBoardMode ? 'opacity-100' : 'opacity-50'}`}>
-          VOID
-        </span>
-        <Switch
-          checked={isBoardMode}
-          onCheckedChange={setIsBoardMode}
-          className="data-[state=checked]:bg-foreground data-[state=unchecked]:bg-muted"
-        />
-        <span className={`mode-toggle-label ${isBoardMode ? 'opacity-100' : 'opacity-50'}`}>
-          BOARD
-        </span>
-      </div>
-
-      {/* Loading state */}
-      {isLoading && (
-        <div className="fixed inset-0 flex items-center justify-center pointer-events-none">
-          <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+        {/* Search Bar and Connections Toggle */}
+        <div className="fixed top-16 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2">
+          <SearchBar 
+            query={searchQuery}
+            onQueryChange={setSearchQuery}
+            resultCount={filteredNotes.length}
+            totalCount={notes.length}
+          />
+          <button
+            onClick={() => setShowLines(!showLines)}
+            className="flex items-center gap-2 px-3 py-2 bg-background border border-foreground hover:bg-foreground hover:text-background transition-colors"
+            title={showLines ? 'Hide connections' : 'Show connections'}
+          >
+            {showLines ? <Eye size={16} /> : <EyeOff size={16} />}
+            <span className="text-xs uppercase tracking-wider font-mono hidden sm:inline">Lines</span>
+          </button>
         </div>
-      )}
 
-      {/* Notes container */}
-      <div className="pt-16 min-h-screen">
-        {notes.map((note) => {
-          const isMatch = noteMatchesSearch(note, searchQuery);
-          const stackDepth = stackDepths.get(note.id) || 0;
-          
-          return (
-            <StickyNote
-              key={note.id}
-              id={note.id}
-              initialText={note.text}
-              initialPosition={note.position}
-              initialRotation={note.rotation}
-              initialColor={note.color}
-              parentId={note.parent_id}
-              stackDepth={stackDepth}
-              dimmed={searchQuery.trim() !== '' && !isMatch}
-              onDelete={handleDeleteNote}
-              onUpdate={handleUpdateNote}
-              onDrop={handleNoteDrop}
-              onDrag={handleNoteDrag}
-            />
-          );
-        })}
+        {/* Mode toggle */}
+        <div className="mode-toggle">
+          <span className={`mode-toggle-label ${!isBoardMode ? 'opacity-100' : 'opacity-50'}`}>
+            VOID
+          </span>
+          <Switch
+            checked={isBoardMode}
+            onCheckedChange={setIsBoardMode}
+            className="data-[state=checked]:bg-foreground data-[state=unchecked]:bg-muted"
+          />
+          <span className={`mode-toggle-label ${isBoardMode ? 'opacity-100' : 'opacity-50'}`}>
+            BOARD
+          </span>
+        </div>
 
-        {/* Empty state */}
-        {!isLoading && notes.length === 0 && (
+        {/* Loading state */}
+        {isLoading && (
           <div className="fixed inset-0 flex items-center justify-center pointer-events-none">
-            <div className="text-center text-muted-foreground">
-              <p className="text-lg uppercase tracking-widest mb-2">THE VOID AWAITS</p>
-              <p className="text-sm opacity-50">Click + to spawn a note</p>
-            </div>
+            <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
           </div>
         )}
+
+        {/* Notes container */}
+        <div className="pt-16 min-h-screen">
+          {notes.map((note) => {
+            const isMatch = noteMatchesSearch(note, searchQuery);
+            const stackDepth = stackDepths.get(note.id) || 0;
+            
+            return (
+              <StickyNote
+                key={note.id}
+                id={note.id}
+                initialText={note.text}
+                initialPosition={note.position}
+                initialRotation={note.rotation}
+                initialColor={note.color}
+                parentId={note.parent_id}
+                stackDepth={stackDepth}
+                dimmed={searchQuery.trim() !== '' && !isMatch}
+                onDelete={handleDeleteNote}
+                onUpdate={handleUpdateNote}
+                onDrop={handleNoteDrop}
+                onDrag={handleNoteDrag}
+              />
+            );
+          })}
+
+          {/* Empty state */}
+          {!isLoading && notes.length === 0 && (
+            <div className="fixed inset-0 flex items-center justify-center pointer-events-none">
+              <div className="text-center text-muted-foreground">
+                <p className="text-lg uppercase tracking-widest mb-2">THE VOID AWAITS</p>
+                <p className="text-sm opacity-50">Click + to spawn a note</p>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Spawn button */}
+        <button
+          onClick={handleAddNote}
+          className="btn-spawn"
+          title="Spawn new note"
+        >
+          <Plus size={32} strokeWidth={2} />
+        </button>
+
+        {/* Footer */}
+        <footer className="fixed bottom-0 left-0 p-4 text-xs text-muted-foreground uppercase tracking-wider">
+          Notes: {notes.length}
+        </footer>
       </div>
-
-      {/* Spawn button */}
-      <button
-        onClick={handleAddNote}
-        className="btn-spawn"
-        title="Spawn new note"
-      >
-        <Plus size={32} strokeWidth={2} />
-      </button>
-
-      {/* Footer */}
-      <footer className="fixed bottom-0 left-0 p-4 text-xs text-muted-foreground uppercase tracking-wider">
-        Notes: {notes.length}
-      </footer>
-    </div>
+    </NotePositionsProvider>
   );
 }
