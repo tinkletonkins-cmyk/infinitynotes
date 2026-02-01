@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { Note } from '@/hooks/useNotes';
+import { useNotePositions } from '@/contexts/NotePositionsContext';
 
 const NOTE_WIDTH = 256;
 const NOTE_HEIGHT = 200;
@@ -11,33 +12,27 @@ interface ConnectionsOverlayProps {
   visible: boolean;
 }
 
-function getNoteCenter(note: Note): { x: number; y: number } {
-  return {
-    x: note.position.x + NOTE_WIDTH / 2,
-    y: note.position.y + NOTE_HEIGHT / 2,
-  };
-}
-
 function noteMatchesSearch(note: Note, query: string): boolean {
   if (!query.trim()) return true;
   return note.text.toLowerCase().includes(query.toLowerCase());
 }
 
 export function ConnectionsOverlay({ notes, searchQuery, visible }: ConnectionsOverlayProps) {
+  const { getPosition, forceUpdate } = useNotePositions();
+
   // Build connections from parent-child relationships
   const connections = useMemo(() => {
-    const lines: { from: Note; to: Note; dimmed: boolean }[] = [];
+    const lines: { fromId: string; toId: string; dimmed: boolean }[] = [];
     
     notes.forEach(note => {
       if (note.parent_id) {
         const parent = notes.find(n => n.id === note.parent_id);
         if (parent) {
-          // Dim connection if either note doesn't match search
           const dimmed = searchQuery.trim() !== '' && (
             !noteMatchesSearch(note, searchQuery) || 
             !noteMatchesSearch(parent, searchQuery)
           );
-          lines.push({ from: parent, to: note, dimmed });
+          lines.push({ fromId: parent.id, toId: note.id, dimmed });
         }
       }
     });
@@ -45,19 +40,40 @@ export function ConnectionsOverlay({ notes, searchQuery, visible }: ConnectionsO
     return lines;
   }, [notes, searchQuery]);
 
-  if (connections.length === 0) return null;
+  // Get real-time positions for line endpoints
+  const getCenter = (noteId: string, fallbackNote?: Note) => {
+    const pos = getPosition(noteId);
+    if (pos) {
+      return {
+        x: pos.x + NOTE_WIDTH / 2,
+        y: pos.y + NOTE_HEIGHT / 2,
+      };
+    }
+    // Fallback to note's stored position
+    const note = fallbackNote || notes.find(n => n.id === noteId);
+    if (note) {
+      return {
+        x: note.position.x + NOTE_WIDTH / 2,
+        y: note.position.y + NOTE_HEIGHT / 2,
+      };
+    }
+    return { x: 0, y: 0 };
+  };
+
+  if (connections.length === 0 || !visible) return null;
 
   return (
-    <motion.svg
-      initial={{ opacity: 0 }}
-      animate={{ opacity: visible ? 1 : 0 }}
-      transition={{ duration: 0.3, ease: 'easeInOut' }}
-      className="fixed inset-0 pointer-events-none"
+    <svg
+      className="pointer-events-none"
       style={{ 
-        width: '100%', 
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        width: '100%',
         height: '100%',
-        zIndex: 999,
-        filter: 'drop-shadow(0 0 3px rgba(255,255,255,0.4)) drop-shadow(0 0 6px rgba(255,255,255,0.2))',
+        zIndex: 50,
+        overflow: 'visible',
+        filter: 'drop-shadow(0 0 3px rgba(255,255,255,0.5)) drop-shadow(0 0 8px rgba(255,255,255,0.3))',
       }}
     >
       <defs>
@@ -71,11 +87,9 @@ export function ConnectionsOverlay({ notes, searchQuery, visible }: ConnectionsO
         >
           <polygon
             points="0 0, 10 3.5, 0 7"
-            fill="currentColor"
-            className="text-foreground"
+            fill="white"
           />
         </marker>
-        {/* Glow filter for lines */}
         <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
           <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
           <feMerge>
@@ -85,29 +99,28 @@ export function ConnectionsOverlay({ notes, searchQuery, visible }: ConnectionsO
         </filter>
       </defs>
       
-      {connections.map(({ from, to, dimmed }, i) => {
-        const fromCenter = getNoteCenter(from);
-        const toCenter = getNoteCenter(to);
+      {connections.map(({ fromId, toId, dimmed }, i) => {
+        const fromNote = notes.find(n => n.id === fromId);
+        const toNote = notes.find(n => n.id === toId);
+        const fromCenter = getCenter(fromId, fromNote);
+        const toCenter = getCenter(toId, toNote);
         
         return (
-          <motion.line
-            key={`${from.id}-${to.id}-${i}`}
-            initial={{ pathLength: 0 }}
-            animate={{ pathLength: 1 }}
-            transition={{ duration: 0.5, ease: 'easeOut' }}
+          <line
+            key={`${fromId}-${toId}-${i}-${forceUpdate}`}
             x1={fromCenter.x}
             y1={fromCenter.y}
             x2={toCenter.x}
             y2={toCenter.y}
-            stroke="currentColor"
+            stroke="white"
             strokeWidth={2}
             strokeDasharray="8,4"
             filter="url(#glow)"
-            className={`text-foreground transition-opacity duration-300 ${dimmed ? 'opacity-20' : 'opacity-70'}`}
+            opacity={dimmed ? 0.2 : 0.8}
             markerEnd="url(#arrowhead)"
           />
         );
       })}
-    </motion.svg>
+    </svg>
   );
 }

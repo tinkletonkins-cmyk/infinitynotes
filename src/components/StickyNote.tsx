@@ -6,6 +6,7 @@ import { getAIResponse, getAIChatResponse } from '@/utils/aiResponses';
 import { useNoteMessages } from '@/hooks/useNoteMessages';
 import { SmartText } from './SmartText';
 import { ColorPicker } from './ColorPicker';
+import { useNotePositions } from '@/contexts/NotePositionsContext';
 
 interface StickyNoteProps {
   id: string;
@@ -52,6 +53,8 @@ export function StickyNote({
   const chatInputRef = useRef<HTMLInputElement>(null);
   const chatScrollRef = useRef<HTMLDivElement>(null);
   const lastPositionRef = useRef(initialPosition);
+  
+  const { updatePosition } = useNotePositions();
 
   // Motion values for snappy drag
   const x = useMotionValue(initialPosition.x);
@@ -70,7 +73,9 @@ export function StickyNote({
     x.set(initialPosition.x);
     y.set(initialPosition.y);
     lastPositionRef.current = initialPosition;
-  }, [initialPosition, x, y]);
+    // Update shared position context
+    updatePosition(id, initialPosition);
+  }, [initialPosition, x, y, id, updatePosition]);
 
   // Sync color from props
   useEffect(() => {
@@ -132,6 +137,7 @@ export function StickyNote({
   const handleDragStart = () => {
     setIsDragging(true);
     lastPositionRef.current = { x: x.get(), y: y.get() };
+    updatePosition(id, lastPositionRef.current);
   };
 
   const handleDrag = (_event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
@@ -139,6 +145,9 @@ export function StickyNote({
     const currentY = y.get();
     const deltaX = currentX - lastPositionRef.current.x;
     const deltaY = currentY - lastPositionRef.current.y;
+    
+    // Update position in shared context for real-time line updates
+    updatePosition(id, { x: currentX, y: currentY });
     
     // Move children along with this note
     if (deltaX !== 0 || deltaY !== 0) {
@@ -151,6 +160,7 @@ export function StickyNote({
   const handleDragEnd = (_event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
     setIsDragging(false);
     const newPos = { x: x.get(), y: y.get() };
+    updatePosition(id, newPos);
     onDrop(id, newPos);
   };
 
