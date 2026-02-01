@@ -14,7 +14,79 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      note_messages: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          is_ai: boolean
+          note_id: string
+          username: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          is_ai?: boolean
+          note_id: string
+          username?: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          is_ai?: boolean
+          note_id?: string
+          username?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "note_messages_note_id_fkey"
+            columns: ["note_id"]
+            isOneToOne: false
+            referencedRelation: "notes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notes: {
+        Row: {
+          created_at: string
+          id: string
+          parent_id: string | null
+          position_x: number
+          position_y: number
+          rotation: number
+          text: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          parent_id?: string | null
+          position_x?: number
+          position_y?: number
+          rotation?: number
+          text?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          parent_id?: string | null
+          position_x?: number
+          position_y?: number
+          rotation?: number
+          text?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notes_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "notes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
