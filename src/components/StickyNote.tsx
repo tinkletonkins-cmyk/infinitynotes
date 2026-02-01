@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { motion, useMotionValue, useSpring } from 'framer-motion';
-import { MessageCircle, X, GripVertical, Send } from 'lucide-react';
+import { MessageCircle, X, GripVertical, Send, Link2 } from 'lucide-react';
 import { useSentiment, getEmotionClass, EmotionType } from '@/hooks/useSentiment';
 import { getAIResponse, getAIChatResponse } from '@/utils/aiResponses';
 import { useNoteMessages } from '@/hooks/useNoteMessages';
@@ -15,9 +15,13 @@ interface StickyNoteProps {
   initialRotation: number;
   initialColor: string | null;
   dimmed: boolean;
+  isConnecting: boolean;
+  isConnectionTarget: boolean;
   onDelete: (id: string) => void;
   onUpdate: (id: string, updates: { text?: string; position?: { x: number; y: number }; color?: string | null }) => void;
   onDrop: (id: string, position: { x: number; y: number }) => void;
+  onStartConnection: (id: string) => void;
+  onCompleteConnection: (id: string) => void;
 }
 
 // Snappy spring physics for responsive feel
@@ -34,9 +38,13 @@ export function StickyNote({
   initialRotation,
   initialColor,
   dimmed,
+  isConnecting,
+  isConnectionTarget,
   onDelete, 
   onUpdate,
   onDrop,
+  onStartConnection,
+  onCompleteConnection,
 }: StickyNoteProps) {
   const [text, setText] = useState(initialText);
   const [color, setColor] = useState<string | null>(initialColor);
@@ -161,9 +169,17 @@ export function StickyNote({
     ? { backgroundColor: color }
     : undefined;
 
+  const handleNoteClick = useCallback((e: React.MouseEvent) => {
+    // If we're in connection mode and this note is a valid target, complete the connection
+    if (isConnectionTarget) {
+      e.stopPropagation();
+      onCompleteConnection(id);
+    }
+  }, [isConnectionTarget, onCompleteConnection, id]);
+
   return (
     <motion.div
-      drag
+      drag={!isConnectionTarget}
       dragMomentum={false}
       dragElastic={0.1}
       dragTransition={{
@@ -180,6 +196,7 @@ export function StickyNote({
       onDragStart={handleDragStart}
       onDrag={handleDrag}
       onDragEnd={handleDragEnd}
+      onClick={handleNoteClick}
       whileDrag={{ 
         scale: 1.02,
         boxShadow: "0 10px 30px rgba(0,0,0,0.3)",
@@ -189,7 +206,7 @@ export function StickyNote({
         scale: { duration: 0.1 },
         boxShadow: { duration: 0.1 },
       }}
-      className={`absolute w-64 cursor-grab ${dimmed ? 'opacity-10 pointer-events-none' : ''}`}
+      className={`absolute w-64 cursor-grab ${dimmed ? 'opacity-10 pointer-events-none' : ''} ${isConnectionTarget ? 'ring-2 ring-cyan-400 ring-offset-2 ring-offset-background cursor-pointer' : ''} ${isConnecting ? 'ring-2 ring-yellow-400' : ''}`}
     >
       <div
         style={backgroundStyle}
@@ -201,6 +218,13 @@ export function StickyNote({
             <GripVertical size={16} className="opacity-50" />
           </div>
           <div className="flex gap-1">
+            <button
+              onClick={(e) => { e.stopPropagation(); onStartConnection(id); }}
+              className={`p-1 hover:opacity-70 transition-opacity ${isConnecting ? 'opacity-100 text-yellow-400' : 'opacity-70'}`}
+              title="Connect to another note"
+            >
+              <Link2 size={16} />
+            </button>
             <ColorPicker currentColor={color} onColorSelect={handleColorChange} />
             <button
               onClick={handleToggleChat}

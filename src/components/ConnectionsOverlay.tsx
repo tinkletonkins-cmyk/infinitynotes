@@ -1,6 +1,6 @@
-import React, { useMemo } from 'react';
-import { motion } from 'framer-motion';
+import React from 'react';
 import { Note } from '@/hooks/useNotes';
+import { Connection } from '@/hooks/useConnections';
 import { useNotePositions } from '@/contexts/NotePositionsContext';
 
 const NOTE_WIDTH = 256;
@@ -8,8 +8,11 @@ const NOTE_HEIGHT = 200;
 
 interface ConnectionsOverlayProps {
   notes: Note[];
+  connections: Connection[];
   searchQuery: string;
   visible: boolean;
+  connectingFrom: string | null;
+  mousePosition: { x: number; y: number } | null;
 }
 
 function noteMatchesSearch(note: Note, query: string): boolean {
@@ -17,28 +20,15 @@ function noteMatchesSearch(note: Note, query: string): boolean {
   return note.text.toLowerCase().includes(query.toLowerCase());
 }
 
-export function ConnectionsOverlay({ notes, searchQuery, visible }: ConnectionsOverlayProps) {
+export function ConnectionsOverlay({ 
+  notes, 
+  connections, 
+  searchQuery, 
+  visible, 
+  connectingFrom,
+  mousePosition 
+}: ConnectionsOverlayProps) {
   const { getPosition, forceUpdate } = useNotePositions();
-
-  // Build connections from parent-child relationships
-  const connections = useMemo(() => {
-    const lines: { fromId: string; toId: string; dimmed: boolean }[] = [];
-    
-    notes.forEach(note => {
-      if (note.parent_id) {
-        const parent = notes.find(n => n.id === note.parent_id);
-        if (parent) {
-          const dimmed = searchQuery.trim() !== '' && (
-            !noteMatchesSearch(note, searchQuery) || 
-            !noteMatchesSearch(parent, searchQuery)
-          );
-          lines.push({ fromId: parent.id, toId: note.id, dimmed });
-        }
-      }
-    });
-    
-    return lines;
-  }, [notes, searchQuery]);
 
   // Get real-time positions for line endpoints
   const getCenter = (noteId: string, fallbackNote?: Note) => {
@@ -60,18 +50,40 @@ export function ConnectionsOverlay({ notes, searchQuery, visible }: ConnectionsO
     return { x: 0, y: 0 };
   };
 
-  if (connections.length === 0 || !visible) return null;
+  // Build connection lines with dimmed state
+  const connectionLines = connections.map(conn => {
+    const fromNote = notes.find(n => n.id === conn.from_note_id);
+    const toNote = notes.find(n => n.id === conn.to_note_id);
+    
+    if (!fromNote || !toNote) return null;
+    
+    const dimmed = searchQuery.trim() !== '' && (
+      !noteMatchesSearch(fromNote, searchQuery) || 
+      !noteMatchesSearch(toNote, searchQuery)
+    );
+    
+    return { 
+      id: conn.id, 
+      fromId: conn.from_note_id, 
+      toId: conn.to_note_id, 
+      dimmed 
+    };
+  }).filter(Boolean);
+
+  const showOverlay = visible && (connectionLines.length > 0 || connectingFrom);
+
+  if (!showOverlay) return null;
 
   return (
     <svg
       className="pointer-events-none"
       style={{ 
-        position: 'absolute',
+        position: 'fixed',
         top: 0,
         left: 0,
-        width: '100%',
-        height: '100%',
-        zIndex: 50,
+        width: '100vw',
+        height: '100vh',
+        zIndex: 9999,
         overflow: 'visible',
         filter: 'drop-shadow(0 0 3px rgba(255,255,255,0.5)) drop-shadow(0 0 8px rgba(255,255,255,0.3))',
       }}
@@ -99,15 +111,17 @@ export function ConnectionsOverlay({ notes, searchQuery, visible }: ConnectionsO
         </filter>
       </defs>
       
-      {connections.map(({ fromId, toId, dimmed }, i) => {
-        const fromNote = notes.find(n => n.id === fromId);
-        const toNote = notes.find(n => n.id === toId);
-        const fromCenter = getCenter(fromId, fromNote);
-        const toCenter = getCenter(toId, toNote);
+      {/* Existing connections */}
+      {connectionLines.map((line) => {
+        if (!line) return null;
+        const fromNote = notes.find(n => n.id === line.fromId);
+        const toNote = notes.find(n => n.id === line.toId);
+        const fromCenter = getCenter(line.fromId, fromNote);
+        const toCenter = getCenter(line.toId, toNote);
         
         return (
           <line
-            key={`${fromId}-${toId}-${i}-${forceUpdate}`}
+            key={`${line.id}-${forceUpdate}`}
             x1={fromCenter.x}
             y1={fromCenter.y}
             x2={toCenter.x}
@@ -116,11 +130,26 @@ export function ConnectionsOverlay({ notes, searchQuery, visible }: ConnectionsO
             strokeWidth={2}
             strokeDasharray="8,4"
             filter="url(#glow)"
-            opacity={dimmed ? 0.2 : 0.8}
+            opacity={line.dimmed ? 0.2 : 0.8}
             markerEnd="url(#arrowhead)"
           />
         );
       })}
+
+      {/* Active connection being drawn */}
+      {connectingFrom && mousePosition && (
+        <line
+          x1={getCenter(connectingFrom).x}
+          y1={getCenter(connectingFrom).y}
+          x2={mousePosition.x}
+          y2={mousePosition.y}
+          stroke="cyan"
+          strokeWidth={2}
+          strokeDasharray="4,4"
+          filter="url(#glow)"
+          opacity={0.8}
+        />
+      )}
     </svg>
   );
 }
