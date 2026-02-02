@@ -1,6 +1,9 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { NoteShape } from '@/components/NoteShapePicker';
+
+// Heartbeat sync interval (3 seconds)
+const HEARTBEAT_INTERVAL_MS = 3000;
 
 export interface Note {
   id: string;
@@ -37,6 +40,34 @@ function getRandomPosition(): { x: number; y: number } {
 export function useNotes(voidId: string | null = null) {
   const [notes, setNotes] = useState<Note[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  
+  // Track which notes are currently being edited locally
+  const editingNotesRef = useRef<Set<string>>(new Set());
+  const heartbeatIntervalRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Helper to convert DB row to Note
+  const dbRowToNote = (n: any): Note => ({
+    id: n.id,
+    text: n.text,
+    position: { x: n.position_x, y: n.position_y },
+    rotation: n.rotation,
+    parent_id: n.parent_id,
+    color: n.color ?? null,
+    shape: (n.shape as NoteShape) ?? 'square',
+    void_id: n.void_id ?? null,
+    tags: n.tags ?? [],
+    is_locked: n.is_locked ?? false,
+    locked_by: n.locked_by ?? null,
+  });
+
+  // Mark a note as being edited (call from StickyNote on focus)
+  const setNoteEditing = useCallback((noteId: string, isEditing: boolean) => {
+    if (isEditing) {
+      editingNotesRef.current.add(noteId);
+    } else {
+      editingNotesRef.current.delete(noteId);
+    }
+  }, []);
 
   // Fetch initial notes for current void
   useEffect(() => {
@@ -56,24 +87,96 @@ export function useNotes(voidId: string | null = null) {
       const { data, error } = await query;
       
       if (!error && data) {
-        setNotes(data.map(n => ({
-          id: n.id,
-          text: n.text,
-          position: { x: n.position_x, y: n.position_y },
-          rotation: n.rotation,
-          parent_id: n.parent_id,
-          color: n.color ?? null,
-          shape: (n.shape as NoteShape) ?? 'square',
-          void_id: n.void_id ?? null,
-          tags: n.tags ?? [],
-          is_locked: n.is_locked ?? false,
-          locked_by: n.locked_by ?? null,
-        })));
+        setNotes(data.map(dbRowToNote));
       }
       setIsLoading(false);
     };
     
     fetchNotes();
+  }, [voidId]);
+
+  // Heartbeat Sync: Every 3 seconds, fetch and reconcile notes
+  useEffect(() => {
+    const heartbeatSync = async () => {
+      let query = supabase
+        .from('notes')
+        .select('*')
+        .order('created_at', { ascending: true });
+      
+      if (voidId) {
+        query = query.eq('void_id', voidId);
+      } else {
+        query = query.is('void_id', null);
+      }
+      
+      const { data, error } = await query;
+      
+      if (error || !data) return;
+      
+      const dbNotes = data.map(dbRowToNote);
+      const dbNoteMap = new Map(dbNotes.map(n => [n.id, n]));
+      
+      setNotes(prevNotes => {
+        const prevNoteMap = new Map(prevNotes.map(n => [n.id, n]));
+        let hasChanges = false;
+        
+        // Check for new notes or updated notes
+        const updatedNotes = prevNotes.map(localNote => {
+          // Skip notes being actively edited
+          if (editingNotesRef.current.has(localNote.id)) {
+            return localNote;
+          }
+          
+          const dbNote = dbNoteMap.get(localNote.id);
+          if (!dbNote) return localNote; // Note deleted, will be handled by realtime
+          
+          // Compare key fields
+          const hasTextChange = dbNote.text !== localNote.text;
+          const hasColorChange = dbNote.color !== localNote.color;
+          const hasPositionChange = 
+            dbNote.position.x !== localNote.position.x || 
+            dbNote.position.y !== localNote.position.y;
+          const hasShapeChange = dbNote.shape !== localNote.shape;
+          const hasTagsChange = JSON.stringify(dbNote.tags) !== JSON.stringify(localNote.tags);
+          const hasLockChange = dbNote.is_locked !== localNote.is_locked || dbNote.locked_by !== localNote.locked_by;
+          
+          if (hasTextChange || hasColorChange || hasPositionChange || hasShapeChange || hasTagsChange || hasLockChange) {
+            hasChanges = true;
+            return dbNote;
+          }
+          
+          return localNote;
+        });
+        
+        // Check for new notes added by other users
+        dbNotes.forEach(dbNote => {
+          if (!prevNoteMap.has(dbNote.id)) {
+            hasChanges = true;
+            updatedNotes.push(dbNote);
+          }
+        });
+        
+        // Check for deleted notes
+        const dbIds = new Set(dbNotes.map(n => n.id));
+        const filteredNotes = updatedNotes.filter(n => dbIds.has(n.id));
+        if (filteredNotes.length !== updatedNotes.length) {
+          hasChanges = true;
+        }
+        
+        return hasChanges ? filteredNotes : prevNotes;
+      });
+    };
+    
+    // Start heartbeat interval
+    heartbeatIntervalRef.current = setInterval(heartbeatSync, HEARTBEAT_INTERVAL_MS);
+    
+    // Cleanup on unmount
+    return () => {
+      if (heartbeatIntervalRef.current) {
+        clearInterval(heartbeatIntervalRef.current);
+        heartbeatIntervalRef.current = null;
+      }
+    };
   }, [voidId]);
 
   // Subscribe to realtime changes for current void
@@ -93,36 +196,14 @@ export function useNotes(voidId: string | null = null) {
             if (noteVoidId !== voidId) return;
             setNotes(prev => {
               if (prev.some(note => note.id === n.id)) return prev;
-              return [...prev, {
-                id: n.id,
-                text: n.text,
-                position: { x: n.position_x, y: n.position_y },
-                rotation: n.rotation,
-                parent_id: n.parent_id,
-                color: n.color ?? null,
-                shape: (n.shape as NoteShape) ?? 'square',
-                void_id: n.void_id ?? null,
-                tags: n.tags ?? [],
-                is_locked: n.is_locked ?? false,
-                locked_by: n.locked_by ?? null,
-              }];
+              return [...prev, dbRowToNote(n)];
             });
           } else if (payload.eventType === 'UPDATE') {
             if (noteVoidId !== voidId) return;
+            // Skip update if note is being locally edited
+            if (editingNotesRef.current.has(n.id)) return;
             setNotes(prev => prev.map(note => 
-              note.id === n.id 
-                ? { 
-                    ...note, 
-                    text: n.text, 
-                    position: { x: n.position_x, y: n.position_y }, 
-                    color: n.color ?? null, 
-                    shape: (n.shape as NoteShape) ?? 'square', 
-                    parent_id: n.parent_id, 
-                    tags: n.tags ?? [],
-                    is_locked: n.is_locked ?? false,
-                    locked_by: n.locked_by ?? null,
-                  }
-                : note
+              note.id === n.id ? dbRowToNote(n) : note
             ));
           } else if (payload.eventType === 'DELETE') {
             const oldN = payload.old as any;
@@ -207,5 +288,5 @@ export function useNotes(voidId: string | null = null) {
     await supabase.from('notes').delete().eq('id', id);
   }, []);
 
-  return { notes, isLoading, addNote, updateNote, deleteNote };
+  return { notes, isLoading, addNote, updateNote, deleteNote, setNoteEditing };
 }

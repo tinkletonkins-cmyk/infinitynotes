@@ -51,6 +51,7 @@ interface StickyNoteProps {
   onTypingComplete?: () => void;
   onPositionChange?: (x: number, y: number) => void;
   onPositionComplete?: () => void;
+  onEditingChange?: (isEditing: boolean) => void;
 }
 
 // Snappy spring physics for responsive feel
@@ -91,6 +92,7 @@ export function StickyNote({
   onTypingComplete,
   onPositionChange,
   onPositionComplete,
+  onEditingChange,
 }: StickyNoteProps) {
   const [text, setText] = useState(initialText);
   const [color, setColor] = useState<string | null>(initialColor);
@@ -479,10 +481,16 @@ export function StickyNote({
             setText(e.target.value);
             onTyping?.(e.target.value, color);
           }}
-          onFocus={() => setIsLocallyEditing(true)}
+          onFocus={() => {
+            setIsLocallyEditing(true);
+            onEditingChange?.(true);
+          }}
           onBlur={() => {
             // Delay clearing to allow save to complete
-            setTimeout(() => setIsLocallyEditing(false), 600);
+            setTimeout(() => {
+              setIsLocallyEditing(false);
+              onEditingChange?.(false);
+            }, 600);
           }}
           placeholder="type your thoughts..."
           className="w-full h-[115px] p-3 bg-transparent resize-none focus:outline-none placeholder:opacity-50 font-handwriting"
