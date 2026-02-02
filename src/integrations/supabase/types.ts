@@ -210,7 +210,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      user_has_void_access: {
+        Args: { check_void_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
       [_ in never]: never
