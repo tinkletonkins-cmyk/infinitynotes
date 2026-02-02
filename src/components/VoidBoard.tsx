@@ -102,7 +102,6 @@ function VoidBoardContent() {
     clearSuggestions,
   } = useVoidAI();
   
-  const [isBoardMode, setIsBoardMode] = useState(false);
   const [boardTheme, setBoardTheme] = useState<BoardTheme>('void');
   const [searchQuery, setSearchQuery] = useState('');
   const [connectingFrom, setConnectingFrom] = useState<string | null>(null);
@@ -317,9 +316,11 @@ function VoidBoardContent() {
       setCurrentVoidId(newVoid.id);
       toast({
         title: 'Void created!',
-        description: 'Share the invite link to bring others in.',
+        description: `Share code ${newVoid.invite_code} to bring others in.`,
       });
+      return newVoid;
     }
+    return null;
   };
 
   const handleDeleteVoid = async (id: string) => {
@@ -355,7 +356,12 @@ function VoidBoardContent() {
   const currentVoid = currentVoidId ? voids.find(v => v.id === currentVoidId) : null;
 
   // Build board theme class
-  const boardThemeClass = isBoardMode ? 'mode-board' : boardTheme !== 'void' ? `theme-${boardTheme}` : '';
+  const getThemeClass = () => {
+    if (boardTheme === 'board') return 'mode-board';
+    if (boardTheme === 'void') return '';
+    return `theme-${boardTheme}`;
+  };
+  const boardThemeClass = getThemeClass();
 
   return (
     <div className={`void-board relative ${boardThemeClass}`}>
@@ -469,15 +475,15 @@ function VoidBoardContent() {
 
       {/* Mode toggle and theme picker */}
       <div className="mode-toggle">
-        <span className={`mode-toggle-label ${!isBoardMode ? 'opacity-100' : 'opacity-50'}`}>
+        <span className={`mode-toggle-label ${boardTheme === 'void' ? 'opacity-100' : 'opacity-50'}`}>
           VOID
         </span>
         <Switch
-          checked={isBoardMode}
-          onCheckedChange={setIsBoardMode}
+          checked={boardTheme === 'board'}
+          onCheckedChange={(checked) => setBoardTheme(checked ? 'board' : 'void')}
           className="data-[state=checked]:bg-foreground data-[state=unchecked]:bg-muted"
         />
-        <span className={`mode-toggle-label ${isBoardMode ? 'opacity-100' : 'opacity-50'}`}>
+        <span className={`mode-toggle-label ${boardTheme === 'board' ? 'opacity-100' : 'opacity-50'}`}>
           BOARD
         </span>
       </div>
