@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useMemo, useEffect } from 'react';
-import { Plus, Loader2, Link2, X, Eye, EyeOff } from 'lucide-react';
+import { Plus, Loader2, Link2, X, Eye, EyeOff, Sparkles } from 'lucide-react';
 import { StickyNote } from './StickyNote';
 import { Switch } from '@/components/ui/switch';
 import { useNotes, Note } from '@/hooks/useNotes';
@@ -15,6 +15,9 @@ import { AuthModal } from './AuthModal';
 import { CreateVoidModal } from './CreateVoidModal';
 import { JoinVoidModal } from './JoinVoidModal';
 import { useToast } from '@/hooks/use-toast';
+import { AmbientSound } from './AmbientSound';
+import { NoteTrail } from './NoteTrail';
+import { ConstellationMode } from './ConstellationMode';
 
 const NOTE_WIDTH = 256;
 const NOTE_HEIGHT = 200;
@@ -88,7 +91,9 @@ function VoidBoardContent() {
   const [connectingFrom, setConnectingFrom] = useState<string | null>(null);
   const [mousePosition, setMousePosition] = useState<{ x: number; y: number } | null>(null);
   const [showLines, setShowLines] = useState(false);
+  const [showConstellation, setShowConstellation] = useState(false);
   const [showWelcome, setShowWelcome] = useState(false);
+  const [dragStates, setDragStates] = useState<Record<string, { isDragging: boolean; x: number; y: number }>>({});
   
   // Show welcome intro for non-signed-in users
   useEffect(() => {
@@ -281,6 +286,13 @@ function VoidBoardContent() {
     setShowWelcome(false);
   }, []);
 
+  const handleDragStateChange = useCallback((noteId: string, isDragging: boolean, x: number, y: number) => {
+    setDragStates(prev => ({
+      ...prev,
+      [noteId]: { isDragging, x, y }
+    }));
+  }, []);
+
   const handleCreateVoid = async (name: string) => {
     const newVoid = await createVoid(name);
     if (newVoid) {
@@ -325,6 +337,30 @@ function VoidBoardContent() {
         onSubmit={handleJoinVoid}
       />
 
+      {/* Constellation Mode */}
+      <ConstellationMode 
+        notes={notes}
+        connections={connections}
+        active={showConstellation}
+      />
+
+      {/* Note Trails */}
+      {notes.map(note => {
+        const dragState = dragStates[note.id];
+        if (!dragState) return null;
+        return (
+          <NoteTrail
+            key={`trail-${note.id}`}
+            noteId={note.id}
+            isDragging={dragState.isDragging}
+            x={dragState.x}
+            y={dragState.y}
+            rotation={note.rotation}
+            color={note.color}
+          />
+        );
+      })}
+
       {/* SVG Connections Overlay */}
       <ConnectionsOverlay 
         notes={notes} 
@@ -334,6 +370,9 @@ function VoidBoardContent() {
         connectingFrom={connectingFrom}
         mousePosition={mousePosition}
       />
+
+      {/* Ambient Sound Control */}
+      <AmbientSound noteCount={notes.length} />
 
       {/* Title */}
       <header className="fixed top-0 left-0 right-0 z-40 p-4 border-b border-foreground bg-background">
@@ -408,6 +447,17 @@ function VoidBoardContent() {
         <span className="text-xs uppercase tracking-widest font-mono">Lines</span>
       </button>
 
+      {/* Constellation mode toggle */}
+      <button
+        onClick={() => setShowConstellation(!showConstellation)}
+        className={`fixed top-44 right-4 z-50 flex items-center gap-2 px-3 py-2 border border-foreground transition-colors ${showConstellation ? 'bg-foreground text-background' : 'bg-background hover:bg-foreground hover:text-background'}`}
+        title={showConstellation ? 'Exit constellation mode' : 'Enter constellation mode'}
+        disabled={connections.length === 0}
+      >
+        <Sparkles size={14} />
+        <span className="text-xs uppercase tracking-widest font-mono">Stars</span>
+      </button>
+
       {/* Loading state */}
       {isLoading && (
         <div className="fixed inset-0 flex items-center justify-center pointer-events-none">
@@ -438,6 +488,7 @@ function VoidBoardContent() {
               onDrop={handleNoteDrop}
               onStartConnection={handleStartConnection}
               onCompleteConnection={handleCompleteConnection}
+              onDragStateChange={handleDragStateChange}
             />
           );
         })}
