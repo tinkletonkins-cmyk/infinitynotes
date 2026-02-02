@@ -217,6 +217,7 @@ export type Database = {
         Args: { check_void_id: string }
         Returns: boolean
       }
+      user_is_void_member: { Args: { check_void_id: string }; Returns: boolean }
     }
     Enums: {
       [_ in never]: never
