@@ -22,6 +22,7 @@ interface StickyNoteProps {
   onDrop: (id: string, position: { x: number; y: number }) => void;
   onStartConnection: (id: string) => void;
   onCompleteConnection: (id: string) => void;
+  onDragStateChange?: (id: string, isDragging: boolean, x: number, y: number) => void;
 }
 
 // Snappy spring physics for responsive feel
@@ -45,6 +46,7 @@ export function StickyNote({
   onDrop,
   onStartConnection,
   onCompleteConnection,
+  onDragStateChange,
 }: StickyNoteProps) {
   const [text, setText] = useState(initialText);
   const [color, setColor] = useState<string | null>(initialColor);
@@ -140,6 +142,7 @@ export function StickyNote({
     setIsDragging(true);
     lastPositionRef.current = { x: x.get(), y: y.get() };
     updatePosition(id, lastPositionRef.current);
+    onDragStateChange?.(id, true, x.get(), y.get());
   };
 
   const handleDrag = () => {
@@ -150,6 +153,7 @@ export function StickyNote({
     updatePosition(id, { x: currentX, y: currentY });
     
     lastPositionRef.current = { x: currentX, y: currentY };
+    onDragStateChange?.(id, true, currentX, currentY);
   };
 
   const handleDragEnd = () => {
@@ -157,6 +161,7 @@ export function StickyNote({
     const newPos = { x: x.get(), y: y.get() };
     updatePosition(id, newPos);
     onDrop(id, newPos);
+    onDragStateChange?.(id, false, newPos.x, newPos.y);
   };
 
   const handleColorChange = useCallback((newColor: string | null) => {
