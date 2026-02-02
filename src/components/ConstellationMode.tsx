@@ -7,7 +7,7 @@ interface StarPoint {
   y: number;
   size: number;
   twinkleDelay: number;
-  spikeLength: number;
+  twinkleDuration: number;
 }
 
 interface ConstellationModeProps {
@@ -21,76 +21,77 @@ function generateStars(count: number): StarPoint[] {
       id: `star-${i}`,
       x: Math.random() * 100,
       y: Math.random() * 100,
-      size: 2 + Math.random() * 4,
-      twinkleDelay: Math.random() * 4,
-      spikeLength: 8 + Math.random() * 20,
+      size: 1 + Math.random() * 2,
+      twinkleDelay: Math.random() * 5,
+      twinkleDuration: 2 + Math.random() * 3,
     });
   }
   return stars;
 }
 
-function Star({ size, spikeLength }: { size: number; spikeLength: number }) {
-  const center = 30;
-  const coreSize = size;
+function Star({ size }: { size: number }) {
+  const spikeLength = size * 15;
   
   return (
-    <svg width={60} height={60} viewBox="0 0 60 60" className="overflow-visible">
-      <defs>
-        <radialGradient id="starCore" cx="50%" cy="50%" r="50%">
-          <stop offset="0%" stopColor="white" stopOpacity="1" />
-          <stop offset="50%" stopColor="white" stopOpacity="0.8" />
-          <stop offset="100%" stopColor="rgba(200,220,255,0)" stopOpacity="0" />
-        </radialGradient>
-        <filter id="starGlow" x="-200%" y="-200%" width="500%" height="500%">
-          <feGaussianBlur stdDeviation="2" result="blur"/>
-          <feMerge>
-            <feMergeNode in="blur"/>
-            <feMergeNode in="SourceGraphic"/>
-          </feMerge>
-        </filter>
-      </defs>
-      
+    <div 
+      className="relative"
+      style={{
+        width: spikeLength * 2,
+        height: spikeLength * 2,
+      }}
+    >
       {/* Vertical spike */}
-      <line 
-        x1={center} 
-        y1={center - spikeLength} 
-        x2={center} 
-        y2={center + spikeLength}
-        stroke="white"
-        strokeWidth="0.5"
-        opacity="0.6"
-        filter="url(#starGlow)"
+      <div 
+        className="absolute left-1/2 top-0 -translate-x-1/2"
+        style={{
+          width: 1,
+          height: '100%',
+          background: 'linear-gradient(to bottom, transparent 0%, white 45%, white 55%, transparent 100%)',
+          opacity: 0.7,
+        }}
       />
       
       {/* Horizontal spike */}
-      <line 
-        x1={center - spikeLength} 
-        y1={center} 
-        x2={center + spikeLength} 
-        y2={center}
-        stroke="white"
-        strokeWidth="0.5"
-        opacity="0.6"
-        filter="url(#starGlow)"
+      <div 
+        className="absolute top-1/2 left-0 -translate-y-1/2"
+        style={{
+          width: '100%',
+          height: 1,
+          background: 'linear-gradient(to right, transparent 0%, white 45%, white 55%, transparent 100%)',
+          opacity: 0.7,
+        }}
+      />
+      
+      {/* Outer glow */}
+      <div 
+        className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full"
+        style={{
+          width: size * 6,
+          height: size * 6,
+          background: 'radial-gradient(circle, rgba(200,220,255,0.3) 0%, transparent 70%)',
+        }}
       />
       
       {/* Core glow */}
-      <circle 
-        cx={center} 
-        cy={center} 
-        r={coreSize * 2}
-        fill="url(#starCore)"
-        filter="url(#starGlow)"
+      <div 
+        className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full"
+        style={{
+          width: size * 3,
+          height: size * 3,
+          background: 'radial-gradient(circle, white 0%, rgba(200,220,255,0.5) 50%, transparent 100%)',
+          boxShadow: `0 0 ${size * 4}px rgba(255,255,255,0.8), 0 0 ${size * 8}px rgba(200,220,255,0.4)`,
+        }}
       />
       
       {/* Bright center */}
-      <circle 
-        cx={center} 
-        cy={center} 
-        r={coreSize}
-        fill="white"
+      <div 
+        className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white"
+        style={{
+          width: size,
+          height: size,
+        }}
       />
-    </svg>
+    </div>
   );
 }
 
@@ -99,42 +100,44 @@ export function ConstellationMode({ active }: ConstellationModeProps) {
 
   useEffect(() => {
     if (active) {
-      setStars(generateStars(50));
+      setStars(generateStars(60));
+    } else {
+      setStars([]);
     }
   }, [active]);
 
+  if (!active) return null;
+
   return (
-    <AnimatePresence>
-      {active && (
-        <div className="fixed inset-0 z-[5] pointer-events-none overflow-hidden">
-          {stars.map(star => (
-            <motion.div
-              key={star.id}
-              initial={{ opacity: 0 }}
-              animate={{ 
-                opacity: [0.3, 1, 0.3],
-                scale: [0.8, 1.1, 0.8],
-              }}
-              exit={{ opacity: 0 }}
-              transition={{
-                duration: 2 + Math.random() * 2,
-                delay: star.twinkleDelay,
-                repeat: Infinity,
-                repeatType: 'loop',
-                ease: 'easeInOut',
-              }}
-              className="absolute"
-              style={{
-                left: `${star.x}%`,
-                top: `${star.y}%`,
-                transform: 'translate(-50%, -50%)',
-              }}
-            >
-              <Star size={star.size} spikeLength={star.spikeLength} />
-            </motion.div>
-          ))}
-        </div>
-      )}
-    </AnimatePresence>
+    <div className="fixed inset-0 z-[5] pointer-events-none overflow-hidden">
+      <AnimatePresence>
+        {stars.map(star => (
+          <motion.div
+            key={star.id}
+            initial={{ opacity: 0, scale: 0.5 }}
+            animate={{ 
+              opacity: [0.2, 1, 0.2],
+              scale: [0.7, 1, 0.7],
+            }}
+            exit={{ opacity: 0, scale: 0 }}
+            transition={{
+              duration: star.twinkleDuration,
+              delay: star.twinkleDelay,
+              repeat: Infinity,
+              repeatType: 'loop',
+              ease: 'easeInOut',
+            }}
+            className="absolute"
+            style={{
+              left: `${star.x}%`,
+              top: `${star.y}%`,
+              transform: 'translate(-50%, -50%)',
+            }}
+          >
+            <Star size={star.size} />
+          </motion.div>
+        ))}
+      </AnimatePresence>
+    </div>
   );
 }
