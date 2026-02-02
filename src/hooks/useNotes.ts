@@ -46,7 +46,6 @@ export function useNotes(voidId: string | null = null) {
   // Track which notes are currently being edited locally
   const editingNotesRef = useRef<Set<string>>(new Set());
   const heartbeatIntervalRef = useRef<NodeJS.Timeout | null>(null);
-  const initialFetchDoneRef = useRef(false);
 
   // Helper to convert DB row to Note
   const dbRowToNote = (n: any): Note => ({
@@ -76,7 +75,6 @@ export function useNotes(voidId: string | null = null) {
   useEffect(() => {
     const fetchNotes = async () => {
       setIsLoading(true);
-      initialFetchDoneRef.current = false;
       
       let query = supabase
         .from('notes')
@@ -96,7 +94,6 @@ export function useNotes(voidId: string | null = null) {
         setLastSyncTime(Date.now());
       }
       setIsLoading(false);
-      initialFetchDoneRef.current = true;
     };
     
     fetchNotes();
@@ -104,8 +101,8 @@ export function useNotes(voidId: string | null = null) {
 
   // High-Speed Heartbeat Sync: Every 1.2 seconds, fetch and reconcile notes
   useEffect(() => {
-    // Wait for initial fetch to complete before starting heartbeat
-    if (!initialFetchDoneRef.current) return;
+    // Don't start heartbeat until initial fetch is done
+    if (isLoading) return;
     
     const heartbeatSync = async () => {
       // Don't sync if page is hidden (save resources)
@@ -186,7 +183,8 @@ export function useNotes(voidId: string | null = null) {
     };
     
     // Start heartbeat interval
-    heartbeatIntervalRef.current = setInterval(heartbeatSync, HEARTBEAT_INTERVAL_MS);
+    const intervalId = setInterval(heartbeatSync, HEARTBEAT_INTERVAL_MS);
+    heartbeatIntervalRef.current = intervalId;
     
     // Also sync when tab becomes visible again
     const handleVisibilityChange = () => {
@@ -198,10 +196,8 @@ export function useNotes(voidId: string | null = null) {
     
     // Cleanup on unmount or when leaving the site
     return () => {
-      if (heartbeatIntervalRef.current) {
-        clearInterval(heartbeatIntervalRef.current);
-        heartbeatIntervalRef.current = null;
-      }
+      clearInterval(intervalId);
+      heartbeatIntervalRef.current = null;
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, [voidId, isLoading]);
