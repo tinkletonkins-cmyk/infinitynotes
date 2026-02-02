@@ -35,8 +35,11 @@ interface StickyNoteProps {
   onDragStateChange?: (id: string, isDragging: boolean, x: number, y: number) => void;
   remoteText?: string;
   remoteColor?: string | null;
+  remotePosition?: { x: number; y: number };
   onTyping?: (text: string, color: string | null) => void;
   onTypingComplete?: () => void;
+  onPositionChange?: (x: number, y: number) => void;
+  onPositionComplete?: () => void;
 }
 
 // Snappy spring physics for responsive feel
@@ -68,8 +71,11 @@ export function StickyNote({
   onDragStateChange,
   remoteText,
   remoteColor,
+  remotePosition,
   onTyping,
   onTypingComplete,
+  onPositionChange,
+  onPositionComplete,
 }: StickyNoteProps) {
   const [text, setText] = useState(initialText);
   const [color, setColor] = useState<string | null>(initialColor);
@@ -101,14 +107,19 @@ export function StickyNote({
   const emotion: EmotionType = useSentiment(text);
   const emotionClass = getEmotionClass(emotion);
 
-  // Sync position from props (for when parent drags this child)
+  // Sync position from props (for when parent drags this child) or from remote broadcast
   useEffect(() => {
-    x.set(initialPosition.x);
-    y.set(initialPosition.y);
-    lastPositionRef.current = initialPosition;
+    // Don't override if we're currently dragging
+    if (isDragging) return;
+    
+    // Use remote position if available, otherwise use initial position
+    const targetPosition = remotePosition || initialPosition;
+    x.set(targetPosition.x);
+    y.set(targetPosition.y);
+    lastPositionRef.current = targetPosition;
     // Update shared position context
-    updatePosition(id, initialPosition);
-  }, [initialPosition, x, y, id, updatePosition]);
+    updatePosition(id, targetPosition);
+  }, [initialPosition, remotePosition, x, y, id, updatePosition, isDragging]);
 
   // Sync color and shape from props
   useEffect(() => {
@@ -205,6 +216,9 @@ export function StickyNote({
     // Update position in shared context for real-time line updates
     updatePosition(id, { x: currentX, y: currentY });
     
+    // Broadcast position to other users
+    onPositionChange?.(currentX, currentY);
+    
     lastPositionRef.current = { x: currentX, y: currentY };
     onDragStateChange?.(id, true, currentX, currentY);
   };
@@ -215,6 +229,8 @@ export function StickyNote({
     updatePosition(id, newPos);
     onDrop(id, newPos);
     onDragStateChange?.(id, false, newPos.x, newPos.y);
+    // Signal position change complete (will save to DB in VoidBoard)
+    onPositionComplete?.();
   };
 
   const handleColorChange = useCallback((newColor: string | null) => {
