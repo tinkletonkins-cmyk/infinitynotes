@@ -7,7 +7,7 @@ interface StarPoint {
   y: number;
   size: number;
   twinkleDelay: number;
-  rotation: number;
+  spikeLength: number;
 }
 
 interface ConstellationModeProps {
@@ -21,49 +21,74 @@ function generateStars(count: number): StarPoint[] {
       id: `star-${i}`,
       x: Math.random() * 100,
       y: Math.random() * 100,
-      size: 8 + Math.random() * 16,
-      twinkleDelay: Math.random() * 3,
-      rotation: Math.random() * 360,
+      size: 2 + Math.random() * 4,
+      twinkleDelay: Math.random() * 4,
+      spikeLength: 8 + Math.random() * 20,
     });
   }
   return stars;
 }
 
-function ChristmasStar({ size, color = '#FFD700' }: { size: number; color?: string }) {
-  const points = 5;
-  const outerRadius = size / 2;
-  const innerRadius = outerRadius * 0.4;
+function Star({ size, spikeLength }: { size: number; spikeLength: number }) {
+  const center = 30;
+  const coreSize = size;
   
-  let path = '';
-  for (let i = 0; i < points * 2; i++) {
-    const radius = i % 2 === 0 ? outerRadius : innerRadius;
-    const angle = (Math.PI / points) * i - Math.PI / 2;
-    const x = outerRadius + radius * Math.cos(angle);
-    const y = outerRadius + radius * Math.sin(angle);
-    path += `${i === 0 ? 'M' : 'L'} ${x} ${y} `;
-  }
-  path += 'Z';
-
   return (
-    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+    <svg width={60} height={60} viewBox="0 0 60 60" className="overflow-visible">
       <defs>
-        <filter id={`glow-${size}`} x="-100%" y="-100%" width="300%" height="300%">
-          <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+        <radialGradient id="starCore" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stopColor="white" stopOpacity="1" />
+          <stop offset="50%" stopColor="white" stopOpacity="0.8" />
+          <stop offset="100%" stopColor="rgba(200,220,255,0)" stopOpacity="0" />
+        </radialGradient>
+        <filter id="starGlow" x="-200%" y="-200%" width="500%" height="500%">
+          <feGaussianBlur stdDeviation="2" result="blur"/>
           <feMerge>
-            <feMergeNode in="coloredBlur"/>
+            <feMergeNode in="blur"/>
             <feMergeNode in="SourceGraphic"/>
           </feMerge>
         </filter>
-        <linearGradient id={`starGradient-${size}`} x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#FFFACD" />
-          <stop offset="50%" stopColor={color} />
-          <stop offset="100%" stopColor="#FFA500" />
-        </linearGradient>
       </defs>
-      <path 
-        d={path} 
-        fill={`url(#starGradient-${size})`}
-        filter={`url(#glow-${size})`}
+      
+      {/* Vertical spike */}
+      <line 
+        x1={center} 
+        y1={center - spikeLength} 
+        x2={center} 
+        y2={center + spikeLength}
+        stroke="white"
+        strokeWidth="0.5"
+        opacity="0.6"
+        filter="url(#starGlow)"
+      />
+      
+      {/* Horizontal spike */}
+      <line 
+        x1={center - spikeLength} 
+        y1={center} 
+        x2={center + spikeLength} 
+        y2={center}
+        stroke="white"
+        strokeWidth="0.5"
+        opacity="0.6"
+        filter="url(#starGlow)"
+      />
+      
+      {/* Core glow */}
+      <circle 
+        cx={center} 
+        cy={center} 
+        r={coreSize * 2}
+        fill="url(#starCore)"
+        filter="url(#starGlow)"
+      />
+      
+      {/* Bright center */}
+      <circle 
+        cx={center} 
+        cy={center} 
+        r={coreSize}
+        fill="white"
       />
     </svg>
   );
@@ -74,41 +99,25 @@ export function ConstellationMode({ active }: ConstellationModeProps) {
 
   useEffect(() => {
     if (active) {
-      setStars(generateStars(30));
+      setStars(generateStars(50));
     }
   }, [active]);
 
   return (
     <AnimatePresence>
       {active && (
-        <motion.div 
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.5 }}
-          className="fixed inset-0 z-[9998] pointer-events-none overflow-hidden"
-        >
-          {/* Dark overlay */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 0.6 }}
-            exit={{ opacity: 0 }}
-            className="absolute inset-0 bg-background"
-          />
-
-          {/* Christmas Stars */}
+        <div className="fixed inset-0 z-[5] pointer-events-none overflow-hidden">
           {stars.map(star => (
             <motion.div
               key={star.id}
-              initial={{ scale: 0, opacity: 0, rotate: star.rotation }}
+              initial={{ opacity: 0 }}
               animate={{ 
-                scale: [0.8, 1.2, 0.8],
-                opacity: [0.4, 1, 0.4],
-                rotate: [star.rotation, star.rotation + 10, star.rotation],
+                opacity: [0.3, 1, 0.3],
+                scale: [0.8, 1.1, 0.8],
               }}
-              exit={{ scale: 0, opacity: 0 }}
+              exit={{ opacity: 0 }}
               transition={{
-                duration: 2 + Math.random(),
+                duration: 2 + Math.random() * 2,
                 delay: star.twinkleDelay,
                 repeat: Infinity,
                 repeatType: 'loop',
@@ -118,31 +127,13 @@ export function ConstellationMode({ active }: ConstellationModeProps) {
               style={{
                 left: `${star.x}%`,
                 top: `${star.y}%`,
-                filter: `drop-shadow(0 0 ${star.size / 2}px rgba(255, 215, 0, 0.8)) drop-shadow(0 0 ${star.size}px rgba(255, 165, 0, 0.5))`,
+                transform: 'translate(-50%, -50%)',
               }}
             >
-              <ChristmasStar 
-                size={star.size} 
-                color={['#FFD700', '#FFA500', '#FFFACD', '#FFE4B5'][Math.floor(Math.random() * 4)]}
-              />
+              <Star size={star.size} spikeLength={star.spikeLength} />
             </motion.div>
           ))}
-
-          {/* Instruction text */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.5 }}
-            className="absolute bottom-20 left-1/2 -translate-x-1/2 text-center"
-          >
-            <p className="text-sm uppercase tracking-[0.3em] text-white/60 font-mono">
-              ✨ Stargazing Mode ✨
-            </p>
-            <p className="text-xs text-white/40 mt-2">
-              {stars.length} stars twinkling in the void
-            </p>
-          </motion.div>
-        </motion.div>
+        </div>
       )}
     </AnimatePresence>
   );
