@@ -11,6 +11,7 @@ export interface Note {
   color: string | null;
   shape: NoteShape;
   void_id: string | null;
+  tags: string[];
 }
 
 function generateId(): string {
@@ -62,6 +63,7 @@ export function useNotes(voidId: string | null = null) {
           color: n.color ?? null,
           shape: (n.shape as NoteShape) ?? 'square',
           void_id: n.void_id ?? null,
+          tags: n.tags ?? [],
         })));
       }
       setIsLoading(false);
@@ -96,13 +98,14 @@ export function useNotes(voidId: string | null = null) {
                 color: n.color ?? null,
                 shape: (n.shape as NoteShape) ?? 'square',
                 void_id: n.void_id ?? null,
+                tags: n.tags ?? [],
               }];
             });
           } else if (payload.eventType === 'UPDATE') {
             if (noteVoidId !== voidId) return;
             setNotes(prev => prev.map(note => 
               note.id === n.id 
-                ? { ...note, text: n.text, position: { x: n.position_x, y: n.position_y }, color: n.color ?? null, shape: (n.shape as NoteShape) ?? 'square', parent_id: n.parent_id }
+                ? { ...note, text: n.text, position: { x: n.position_x, y: n.position_y }, color: n.color ?? null, shape: (n.shape as NoteShape) ?? 'square', parent_id: n.parent_id, tags: n.tags ?? [] }
                 : note
             ));
           } else if (payload.eventType === 'DELETE') {
@@ -136,6 +139,7 @@ export function useNotes(voidId: string | null = null) {
       color: null,
       shape: 'square',
       void_id: voidId,
+      tags: [],
     };
     setNotes(prev => [...prev, newNote]);
 
@@ -154,7 +158,7 @@ export function useNotes(voidId: string | null = null) {
     return id;
   }, [voidId]);
 
-  const updateNote = useCallback(async (id: string, updates: Partial<Pick<Note, 'text' | 'position' | 'color' | 'parent_id' | 'shape'>>) => {
+  const updateNote = useCallback(async (id: string, updates: Partial<Pick<Note, 'text' | 'position' | 'color' | 'parent_id' | 'shape' | 'tags'>>) => {
     // Optimistic update
     setNotes(prev => prev.map(note => 
       note.id === id ? { ...note, ...updates } : note
@@ -170,7 +174,8 @@ export function useNotes(voidId: string | null = null) {
     if (updates.color !== undefined) dbUpdates.color = updates.color;
     if (updates.parent_id !== undefined) dbUpdates.parent_id = updates.parent_id;
     if (updates.shape !== undefined) dbUpdates.shape = updates.shape;
-    
+    if (updates.tags !== undefined) dbUpdates.tags = updates.tags;
+
     await supabase.from('notes').update(dbUpdates).eq('id', id);
   }, []);
 
