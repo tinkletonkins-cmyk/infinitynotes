@@ -9,6 +9,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useVoids } from '@/hooks/useVoids';
 import { useVoidAI } from '@/hooks/useVoidAI';
 import { useRealtimeTyping } from '@/hooks/useRealtimeTyping';
+import { useZoomPan } from '@/hooks/useZoomPan';
 import { SearchBar } from './SearchBar';
 import { TagsFilter } from './TagsFilter';
 import { DrawingCanvas } from './DrawingCanvas';
@@ -26,6 +27,7 @@ import { MoodWeather } from './MoodWeather';
 import { VoidSummaryModal } from './VoidSummaryModal';
 import { ConnectionSuggestions } from './ConnectionSuggestions';
 import { BoardThemePicker, BoardTheme } from './BoardThemePicker';
+import { BoardNavigator } from './BoardNavigator';
 
 const NOTE_WIDTH = 256;
 const NOTE_HEIGHT = 200;
@@ -96,6 +98,9 @@ function VoidBoardContent() {
   const { addReaction, getReactionCounts, hasUserReacted } = useReactions(noteIds);
   const { getPosition } = useNotePositions();
   const { remoteNotes, remotePositions, broadcastTyping, broadcastPosition, clearRemoteNote, clearRemotePosition, sessionId } = useRealtimeTyping(currentVoidId);
+  
+  // Zoom and pan
+  const { scale, x, y, zoomIn, zoomOut, recenter } = useZoomPan();
   
   // AI features
   const {
@@ -596,7 +601,13 @@ function VoidBoardContent() {
       )}
 
       {/* Notes container - z-10 to be above theme backgrounds but below UI controls */}
-      <div className="pt-16 min-h-screen relative z-10" onClick={connectingFrom ? cancelConnection : undefined}>
+      <div 
+        className="pt-16 min-h-screen relative z-10 viewport-container" 
+        style={{
+          transform: `translate(${x}px, ${y}px) scale(${scale})`,
+        }}
+        onClick={connectingFrom ? cancelConnection : undefined}
+      >
         {notes.map((note) => {
           const isMatch = noteMatchesSearch(note, searchQuery) && 
             (selectedTags.length === 0 || selectedTags.some(tag => note.tags.includes(tag)));
@@ -657,6 +668,14 @@ function VoidBoardContent() {
       >
         <Plus size={32} strokeWidth={2} />
       </button>
+
+      {/* Board Navigator */}
+      <BoardNavigator
+        zoom={scale}
+        onRecenter={recenter}
+        onZoomIn={zoomIn}
+        onZoomOut={zoomOut}
+      />
 
       {/* Footer */}
       <footer className="fixed bottom-0 left-0 p-4 text-xs text-muted-foreground uppercase tracking-wider">

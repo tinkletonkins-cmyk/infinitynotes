@@ -286,4 +286,56 @@
     @apply border-t border-current p-2 text-xs font-mono opacity-90;
     @apply max-h-24 overflow-y-auto;
   }
+  
+  /* Mood-based glow effects */
+  .note-glow {
+    transition: box-shadow 0.3s ease;
+  }
+  
+  .note-glow-happy {
+    box-shadow: 0 0 20px 2px hsl(var(--emotion-happy) / 0.4),
+                0 4px 16px hsl(var(--emotion-happy) / 0.2);
+  }
+  
+  .note-glow-angry {
+    box-shadow: 0 0 20px 2px hsl(var(--emotion-angry) / 0.4),
+                0 4px 16px hsl(var(--emotion-angry) / 0.2);
+  }
+  
+  .note-glow-sad {
+    box-shadow: 0 0 20px 2px hsl(var(--emotion-sad) / 0.4),
+                0 4px 16px hsl(var(--emotion-sad) / 0.2);
+  }
+  
+  .note-glow-neutral {
+    box-shadow: 0 0 20px 2px hsl(var(--emotion-neutral) / 0.4),
+                0 4px 16px hsl(var(--emotion-neutral) / 0.2);
+  }
+  
+  .note-glow-normal {
+    box-shadow: 0 0 20px 2px hsl(var(--emotion-normal) / 0.4),
+                0 4px 16px hsl(var(--emotion-normal) / 0.2);
+  }
+  
+  .note-glow-weird {
+    box-shadow: 0 0 20px 2px hsl(var(--emotion-weird) / 0.3),
+                0 4px 16px hsl(var(--emotion-weird) / 0.15);
+  }
+  
+  .note-glow-question {
+    box-shadow: 0 0 20px 2px hsl(var(--emotion-question) / 0.4),
+                0 4px 16px hsl(var(--emotion-question) / 0.2);
+  }
+  
+  .note-glow-custom {
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  }
+  
+  /* GPU-accelerated viewport for zoom/pan */
+  .viewport-container {
+    transform-style: preserve-3d;
+    backface-visibility: hidden;
+    will-change: transform;
+    transform-origin: 0 0;
+  }
 }
