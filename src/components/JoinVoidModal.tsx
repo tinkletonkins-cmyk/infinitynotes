@@ -66,9 +66,10 @@ export function JoinVoidModal({ isOpen, onClose, onSubmit }: JoinVoidModalProps)
                 <input
                   type="text"
                   value={code}
-                  onChange={e => setCode(e.target.value)}
-                  placeholder="Paste invite code or link"
-                  className="w-full p-3 border border-foreground bg-background text-foreground font-mono placeholder:text-muted-foreground"
+                  onChange={e => setCode(e.target.value.toUpperCase())}
+                  placeholder="e.g. 4WX92"
+                  maxLength={5}
+                  className="w-full p-3 border border-foreground bg-background text-foreground font-mono text-center text-2xl tracking-[0.5em] uppercase placeholder:text-muted-foreground placeholder:text-base placeholder:tracking-normal"
                   required
                   autoFocus
                 />
