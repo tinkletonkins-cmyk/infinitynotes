@@ -88,9 +88,12 @@ function VoidBoardContent() {
   const [connectingFrom, setConnectingFrom] = useState<string | null>(null);
   const [mousePosition, setMousePosition] = useState<{ x: number; y: number } | null>(null);
   const [showLines, setShowLines] = useState(false);
-  const [showWelcome, setShowWelcome] = useState(() => {
-    return !localStorage.getItem('void-welcomed');
-  });
+  const [showWelcome, setShowWelcome] = useState(false);
+  
+  // Show welcome intro for non-signed-in users
+  useEffect(() => {
+    setShowWelcome(!user);
+  }, [user]);
   
   // Modal states
   const [showAuthModal, setShowAuthModal] = useState(false);
