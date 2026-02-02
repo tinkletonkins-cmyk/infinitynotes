@@ -8,9 +8,21 @@ interface TypingPayload {
   userId: string;
 }
 
+interface PositionPayload {
+  noteId: string;
+  x: number;
+  y: number;
+  userId: string;
+}
+
 interface RemoteNote {
   text: string;
   color: string | null;
+}
+
+interface RemotePosition {
+  x: number;
+  y: number;
 }
 
 // Generate a unique session ID for this browser tab
@@ -27,6 +39,7 @@ export function useRealtimeTyping(voidId: string | null) {
   const sessionId = useRef(getSessionId());
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const [remoteNotes, setRemoteNotes] = useState<Record<string, RemoteNote>>({});
+  const [remotePositions, setRemotePositions] = useState<Record<string, RemotePosition>>({});
 
   useEffect(() => {
     const channelName = `typing-${voidId ?? 'public'}`;
@@ -46,6 +59,16 @@ export function useRealtimeTyping(voidId: string | null) {
         setRemoteNotes(prev => ({
           ...prev,
           [data.noteId]: { text: data.text, color: data.color },
+        }));
+      })
+      .on('broadcast', { event: 'position' }, (payload) => {
+        const data = payload.payload as PositionPayload;
+        // Ignore our own broadcasts
+        if (data.userId === sessionId.current) return;
+        
+        setRemotePositions(prev => ({
+          ...prev,
+          [data.noteId]: { x: data.x, y: data.y },
         }));
       })
       .subscribe();
@@ -73,6 +96,21 @@ export function useRealtimeTyping(voidId: string | null) {
     });
   }, []);
 
+  const broadcastPosition = useCallback((noteId: string, x: number, y: number) => {
+    if (!channelRef.current) return;
+    
+    channelRef.current.send({
+      type: 'broadcast',
+      event: 'position',
+      payload: {
+        noteId,
+        x,
+        y,
+        userId: sessionId.current,
+      } as PositionPayload,
+    });
+  }, []);
+
   const clearRemoteNote = useCallback((noteId: string) => {
     setRemoteNotes(prev => {
       const next = { ...prev };
@@ -81,10 +119,21 @@ export function useRealtimeTyping(voidId: string | null) {
     });
   }, []);
 
+  const clearRemotePosition = useCallback((noteId: string) => {
+    setRemotePositions(prev => {
+      const next = { ...prev };
+      delete next[noteId];
+      return next;
+    });
+  }, []);
+
   return {
     remoteNotes,
+    remotePositions,
     broadcastTyping,
+    broadcastPosition,
     clearRemoteNote,
+    clearRemotePosition,
     sessionId: sessionId.current,
   };
 }
