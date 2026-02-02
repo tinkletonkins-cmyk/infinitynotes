@@ -595,8 +595,8 @@ function VoidBoardContent() {
         </div>
       )}
 
-      {/* Notes container */}
-      <div className="pt-16 min-h-screen" onClick={connectingFrom ? cancelConnection : undefined}>
+      {/* Notes container - z-10 to be above theme backgrounds but below UI controls */}
+      <div className="pt-16 min-h-screen relative z-10" onClick={connectingFrom ? cancelConnection : undefined}>
         {notes.map((note) => {
           const isMatch = noteMatchesSearch(note, searchQuery) && 
             (selectedTags.length === 0 || selectedTags.some(tag => note.tags.includes(tag)));
