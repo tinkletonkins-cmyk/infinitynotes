@@ -13,6 +13,7 @@ import { NoteTags } from './NoteTags';
 import { NoteHistoryModal } from './NoteHistoryModal';
 import { useNotePositions } from '@/contexts/NotePositionsContext';
 import { TypingIndicator } from './TypingIndicator';
+import { useSnapToAlign } from '@/hooks/useSnapToAlign';
 
 interface StickyNoteProps {
   id: string;
@@ -93,7 +94,8 @@ export function StickyNote({
   const chatScrollRef = useRef<HTMLDivElement>(null);
   const lastPositionRef = useRef(initialPosition);
   
-  const { updatePosition } = useNotePositions();
+  const { updatePosition, positions } = useNotePositions();
+  const { snapPosition } = useSnapToAlign(positions, id);
 
   // Motion values for snappy drag
   const x = useMotionValue(initialPosition.x);
@@ -232,7 +234,18 @@ export function StickyNote({
 
   const handleDragEnd = () => {
     setIsDragging(false);
-    const newPos = { x: x.get(), y: y.get() };
+    const currentPos = { x: x.get(), y: y.get() };
+    
+    // Snap to nearby notes
+    const snapped = snapPosition(currentPos);
+    const newPos = { x: snapped.x, y: snapped.y };
+    
+    // Update motion values if snapped
+    if (snapped.snappedX || snapped.snappedY) {
+      x.set(newPos.x);
+      y.set(newPos.y);
+    }
+    
     updatePosition(id, newPos);
     onDrop(id, newPos);
     onDragStateChange?.(id, false, newPos.x, newPos.y);
