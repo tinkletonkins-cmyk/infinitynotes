@@ -2,8 +2,8 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { NoteShape } from '@/components/NoteShapePicker';
 
-// Heartbeat sync interval (3 seconds)
-const HEARTBEAT_INTERVAL_MS = 3000;
+// High-speed sync interval (1.2 seconds - Discord/Slack level)
+const HEARTBEAT_INTERVAL_MS = 1200;
 
 export interface Note {
   id: string;
@@ -40,10 +40,13 @@ function getRandomPosition(): { x: number; y: number } {
 export function useNotes(voidId: string | null = null) {
   const [notes, setNotes] = useState<Note[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [lastSyncTime, setLastSyncTime] = useState<number>(0);
   
   // Track which notes are currently being edited locally
   const editingNotesRef = useRef<Set<string>>(new Set());
   const heartbeatIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const initialFetchDoneRef = useRef(false);
 
   // Helper to convert DB row to Note
   const dbRowToNote = (n: any): Note => ({
@@ -69,10 +72,12 @@ export function useNotes(voidId: string | null = null) {
     }
   }, []);
 
-  // Fetch initial notes for current void
+  // Fetch initial notes for current void - BEFORE realtime starts
   useEffect(() => {
     const fetchNotes = async () => {
       setIsLoading(true);
+      initialFetchDoneRef.current = false;
+      
       let query = supabase
         .from('notes')
         .select('*')
@@ -88,16 +93,26 @@ export function useNotes(voidId: string | null = null) {
       
       if (!error && data) {
         setNotes(data.map(dbRowToNote));
+        setLastSyncTime(Date.now());
       }
       setIsLoading(false);
+      initialFetchDoneRef.current = true;
     };
     
     fetchNotes();
   }, [voidId]);
 
-  // Heartbeat Sync: Every 3 seconds, fetch and reconcile notes
+  // High-Speed Heartbeat Sync: Every 1.2 seconds, fetch and reconcile notes
   useEffect(() => {
+    // Wait for initial fetch to complete before starting heartbeat
+    if (!initialFetchDoneRef.current) return;
+    
     const heartbeatSync = async () => {
+      // Don't sync if page is hidden (save resources)
+      if (document.hidden) return;
+      
+      setIsSyncing(true);
+      
       let query = supabase
         .from('notes')
         .select('*')
@@ -111,6 +126,9 @@ export function useNotes(voidId: string | null = null) {
       
       const { data, error } = await query;
       
+      setIsSyncing(false);
+      setLastSyncTime(Date.now());
+      
       if (error || !data) return;
       
       const dbNotes = data.map(dbRowToNote);
@@ -122,13 +140,13 @@ export function useNotes(voidId: string | null = null) {
         
         // Check for new notes or updated notes
         const updatedNotes = prevNotes.map(localNote => {
-          // Skip notes being actively edited
+          // FOCUS PROTECTION: Skip notes being actively edited
           if (editingNotesRef.current.has(localNote.id)) {
             return localNote;
           }
           
           const dbNote = dbNoteMap.get(localNote.id);
-          if (!dbNote) return localNote; // Note deleted, will be handled by realtime
+          if (!dbNote) return localNote; // Note deleted, will be handled below
           
           // Compare key fields
           const hasTextChange = dbNote.text !== localNote.text;
@@ -170,14 +188,23 @@ export function useNotes(voidId: string | null = null) {
     // Start heartbeat interval
     heartbeatIntervalRef.current = setInterval(heartbeatSync, HEARTBEAT_INTERVAL_MS);
     
-    // Cleanup on unmount
+    // Also sync when tab becomes visible again
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        heartbeatSync();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    // Cleanup on unmount or when leaving the site
     return () => {
       if (heartbeatIntervalRef.current) {
         clearInterval(heartbeatIntervalRef.current);
         heartbeatIntervalRef.current = null;
       }
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [voidId]);
+  }, [voidId, isLoading]);
 
   // Subscribe to realtime changes for current void
   useEffect(() => {
@@ -288,5 +315,5 @@ export function useNotes(voidId: string | null = null) {
     await supabase.from('notes').delete().eq('id', id);
   }, []);
 
-  return { notes, isLoading, addNote, updateNote, deleteNote, setNoteEditing };
+  return { notes, isLoading, isSyncing, lastSyncTime, addNote, updateNote, deleteNote, setNoteEditing };
 }

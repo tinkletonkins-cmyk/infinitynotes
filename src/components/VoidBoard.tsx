@@ -32,6 +32,7 @@ import { BoardNavigator } from './BoardNavigator';
 import { BoardHistorySlider } from './BoardHistorySlider';
 import { LiveCursors, getCursorColor } from './LiveCursors';
 import { VoidPulse } from './VoidPulse';
+import { SyncIndicator } from './SyncIndicator';
 
 const NOTE_WIDTH = 256;
 const NOTE_HEIGHT = 200;
@@ -96,7 +97,7 @@ function VoidBoardContent() {
   const { toast } = useToast();
   
   const [currentVoidId, setCurrentVoidId] = useState<string | null>(null);
-  const { notes, isLoading, addNote, updateNote, deleteNote, setNoteEditing } = useNotes(currentVoidId);
+  const { notes, isLoading, isSyncing, lastSyncTime, addNote, updateNote, deleteNote, setNoteEditing } = useNotes(currentVoidId);
   const { connections, addConnection, removeConnectionsForNote } = useConnections(currentVoidId);
   const noteIds = useMemo(() => notes.map(n => n.id), [notes]);
   const { addReaction, getReactionCounts, hasUserReacted } = useReactions(noteIds);
@@ -765,6 +766,9 @@ function VoidBoardContent() {
         currentNotes={notes}
         onCopyNote={handleCopyFromHistory}
       />
+
+      {/* Sync Indicator */}
+      <SyncIndicator isSyncing={isSyncing} lastSyncTime={lastSyncTime} />
 
       {/* Footer */}
       <footer className="fixed bottom-0 left-0 p-4 text-xs text-muted-foreground uppercase tracking-wider">
