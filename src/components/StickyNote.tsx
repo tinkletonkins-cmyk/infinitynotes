@@ -104,7 +104,13 @@ export function StickyNote({
 
   const { messages, username, sendMessage } = useNoteMessages(id);
   const { history, isLoading: isLoadingHistory, addHistoryEntry } = useNoteHistory(showHistory ? id : null);
-  const emotion: EmotionType = useSentiment(text);
+  
+  // Only compute local sentiment when editing locally - skip when receiving remote updates
+  const localEmotion: EmotionType = useSentiment(text);
+  
+  // Use remote color directly when available (skip local sentiment for synced events)
+  const isReceivingRemote = !isLocallyEditing && remoteColor !== undefined;
+  const emotion: EmotionType = isReceivingRemote ? 'neutral' : localEmotion; // 'neutral' is placeholder when using remote color
   const emotionClass = getEmotionClass(emotion);
 
   // Sync position from props (for when parent drags this child) or from remote broadcast
