@@ -75,7 +75,7 @@ function VoidBoardContent() {
   const [searchQuery, setSearchQuery] = useState('');
   const [connectingFrom, setConnectingFrom] = useState<string | null>(null);
   const [mousePosition, setMousePosition] = useState<{ x: number; y: number } | null>(null);
-  const [showLines, setShowLines] = useState(true);
+  const [showLines, setShowLines] = useState(false);
   const [showWelcome, setShowWelcome] = useState(() => {
     return !localStorage.getItem('void-welcomed');
   });
