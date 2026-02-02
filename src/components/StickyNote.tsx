@@ -33,6 +33,9 @@ interface StickyNoteProps {
   onStartConnection: (id: string) => void;
   onCompleteConnection: (id: string) => void;
   onDragStateChange?: (id: string, isDragging: boolean, x: number, y: number) => void;
+  remoteText?: string;
+  onTyping?: (text: string) => void;
+  onTypingComplete?: () => void;
 }
 
 // Snappy spring physics for responsive feel
@@ -62,6 +65,9 @@ export function StickyNote({
   onStartConnection,
   onCompleteConnection,
   onDragStateChange,
+  remoteText,
+  onTyping,
+  onTypingComplete,
 }: StickyNoteProps) {
   const [text, setText] = useState(initialText);
   const [color, setColor] = useState<string | null>(initialColor);
@@ -72,6 +78,7 @@ export function StickyNote({
   const [isDragging, setIsDragging] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [lastSavedText, setLastSavedText] = useState(initialText);
+  const [isLocallyEditing, setIsLocallyEditing] = useState(false);
   
   const chatInputRef = useRef<HTMLInputElement>(null);
   const chatScrollRef = useRef<HTMLDivElement>(null);
@@ -125,10 +132,20 @@ export function StickyNote({
         }
         setLastSavedText(text);
         onUpdate(id, { text });
+        // Signal that local editing is complete (text saved)
+        setIsLocallyEditing(false);
+        onTypingComplete?.();
       }
     }, 500);
     return () => clearTimeout(timeout);
-  }, [text, id, initialText, onUpdate, lastSavedText, addHistoryEntry, color, shape]);
+  }, [text, id, initialText, onUpdate, lastSavedText, addHistoryEntry, color, shape, onTypingComplete]);
+
+  // Clear remote text when we receive database update matching our text
+  useEffect(() => {
+    if (initialText && !isLocallyEditing) {
+      onTypingComplete?.();
+    }
+  }, [initialText, isLocallyEditing, onTypingComplete]);
 
   // Auto-scroll chat
   useEffect(() => {
@@ -321,12 +338,27 @@ export function StickyNote({
 
         {/* Text area */}
         <textarea
-          value={text}
-          onChange={(e) => setText(e.target.value)}
+          value={isLocallyEditing ? text : (remoteText !== undefined ? remoteText : text)}
+          onChange={(e) => {
+            setIsLocallyEditing(true);
+            setText(e.target.value);
+            onTyping?.(e.target.value);
+          }}
+          onFocus={() => setIsLocallyEditing(true)}
+          onBlur={() => {
+            // Delay clearing to allow save to complete
+            setTimeout(() => setIsLocallyEditing(false), 600);
+          }}
           placeholder="type your thoughts..."
           className="w-full h-32 p-3 bg-transparent resize-none focus:outline-none placeholder:opacity-50 font-handwriting"
           style={{ color: 'inherit', fontFamily: "'Caveat', cursive", fontSize: '1.25rem' }}
         />
+        {/* Remote typing indicator */}
+        {remoteText !== undefined && !isLocallyEditing && (
+          <div className="absolute top-12 right-2 flex items-center gap-1 text-xs opacity-60">
+            <span className="animate-pulse">✍️</span>
+          </div>
+        )}
 
         {/* Tags */}
         <div className="px-3 pb-1">

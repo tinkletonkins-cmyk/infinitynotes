@@ -8,6 +8,7 @@ import { useReactions } from '@/hooks/useReactions';
 import { useAuth } from '@/hooks/useAuth';
 import { useVoids } from '@/hooks/useVoids';
 import { useVoidAI } from '@/hooks/useVoidAI';
+import { useRealtimeTyping } from '@/hooks/useRealtimeTyping';
 import { SearchBar } from './SearchBar';
 import { TagsFilter } from './TagsFilter';
 import { DrawingCanvas } from './DrawingCanvas';
@@ -94,6 +95,7 @@ function VoidBoardContent() {
   const noteIds = useMemo(() => notes.map(n => n.id), [notes]);
   const { addReaction, getReactionCounts, hasUserReacted } = useReactions(noteIds);
   const { getPosition } = useNotePositions();
+  const { remoteTexts, broadcastTyping, clearRemoteText, sessionId } = useRealtimeTyping(currentVoidId);
   
   // AI features
   const {
@@ -623,6 +625,9 @@ function VoidBoardContent() {
               onStartConnection={handleStartConnection}
               onCompleteConnection={handleCompleteConnection}
               onDragStateChange={handleDragStateChange}
+              remoteText={remoteTexts[note.id]}
+              onTyping={(text) => broadcastTyping(note.id, text)}
+              onTypingComplete={() => clearRemoteText(note.id)}
             />
           );
         })}
