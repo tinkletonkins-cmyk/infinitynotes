@@ -10,6 +10,7 @@ import { useVoids } from '@/hooks/useVoids';
 import { useVoidAI } from '@/hooks/useVoidAI';
 import { useRealtimeTyping } from '@/hooks/useRealtimeTyping';
 import { useZoomPan } from '@/hooks/useZoomPan';
+import { useVoidPulse } from '@/hooks/useVoidPulse';
 import { SearchBar } from './SearchBar';
 import { TagsFilter } from './TagsFilter';
 import { DrawingCanvas } from './DrawingCanvas';
@@ -30,6 +31,7 @@ import { BoardThemePicker, BoardTheme } from './BoardThemePicker';
 import { BoardNavigator } from './BoardNavigator';
 import { BoardHistorySlider } from './BoardHistorySlider';
 import { LiveCursors, getCursorColor } from './LiveCursors';
+import { VoidPulse } from './VoidPulse';
 
 const NOTE_WIDTH = 256;
 const NOTE_HEIGHT = 200;
@@ -100,6 +102,9 @@ function VoidBoardContent() {
   const { addReaction, getReactionCounts, hasUserReacted } = useReactions(noteIds);
   const { getPosition } = useNotePositions();
   const { remoteNotes, remotePositions, broadcastTyping, broadcastPosition, broadcastCursor, clearRemoteNote, clearRemotePosition, remoteCursors, sessionId } = useRealtimeTyping(currentVoidId);
+  
+  // Void Pulse - activity-based background effects
+  const { activityLevel, ripples, pulseNoteCreated, pulseReaction, pulseTyping } = useVoidPulse(currentVoidId);
   
   // Broadcast cursor position on mouse move
   useEffect(() => {
@@ -262,8 +267,14 @@ function VoidBoardContent() {
     setSelectedTags([]);
   }, []);
   const handleAddNote = useCallback(() => {
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+    const x = Math.random() * (viewportWidth - 300) + 150;
+    const y = Math.random() * (viewportHeight - 300) + 150;
+    
     addNote();
-  }, [addNote]);
+    pulseNoteCreated(x, y);
+  }, [addNote, pulseNoteCreated]);
 
   const handleNoteDrop = useCallback((
     droppedId: string,
@@ -281,7 +292,14 @@ function VoidBoardContent() {
 
   const handleReact = useCallback((noteId: string, emoji: string) => {
     addReaction(noteId, emoji);
-  }, [addReaction]);
+    
+    // Find note position for ripple effect
+    const note = notes.find(n => n.id === noteId);
+    if (note) {
+      const pos = getPosition(noteId) || note.position;
+      pulseReaction(pos.x + 128, pos.y + 64); // Center of note
+    }
+  }, [addReaction, notes, getPosition, pulseReaction]);
 
   const handleDeleteNote = useCallback((id: string) => {
     const note = notes.find(n => n.id === id);
@@ -503,6 +521,9 @@ function VoidBoardContent() {
         voidId={currentVoidId}
       />
 
+      {/* Void Pulse - Activity-based background effects */}
+      <VoidPulse activityLevel={activityLevel} ripples={ripples} />
+
       {/* Mood Weather Background */}
       <MoodWeather notes={notes} />
 
@@ -699,7 +720,7 @@ function VoidBoardContent() {
               remoteText={remoteNotes[note.id]?.text}
               remoteColor={remoteNotes[note.id]?.color}
               remotePosition={remotePositions[note.id]}
-              onTyping={(text, color) => broadcastTyping(note.id, text, color)}
+              onTyping={(text, color) => { broadcastTyping(note.id, text, color); pulseTyping(); }}
               onTypingComplete={() => clearRemoteNote(note.id)}
               onPositionChange={(x, y) => broadcastPosition(note.id, x, y)}
               onPositionComplete={() => clearRemotePosition(note.id)}
