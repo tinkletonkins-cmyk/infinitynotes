@@ -89,19 +89,6 @@ export function ConnectionsOverlay({
       }}
     >
       <defs>
-        <marker
-          id="arrowhead"
-          markerWidth="10"
-          markerHeight="7"
-          refX="9"
-          refY="3.5"
-          orient="auto"
-        >
-          <polygon
-            points="0 0, 10 3.5, 0 7"
-            fill="white"
-          />
-        </marker>
         <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
           <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
           <feMerge>
@@ -128,10 +115,8 @@ export function ConnectionsOverlay({
             y2={toCenter.y}
             stroke="white"
             strokeWidth={2}
-            strokeDasharray="8,4"
             filter="url(#glow)"
             opacity={line.dimmed ? 0.2 : 0.8}
-            markerEnd="url(#arrowhead)"
           />
         );
       })}
@@ -143,11 +128,10 @@ export function ConnectionsOverlay({
           y1={getCenter(connectingFrom).y}
           x2={mousePosition.x}
           y2={mousePosition.y}
-          stroke="cyan"
+          stroke="white"
           strokeWidth={2}
-          strokeDasharray="4,4"
           filter="url(#glow)"
-          opacity={0.8}
+          opacity={0.9}
         />
       )}
     </svg>
