@@ -28,6 +28,7 @@ import { VoidSummaryModal } from './VoidSummaryModal';
 import { ConnectionSuggestions } from './ConnectionSuggestions';
 import { BoardThemePicker, BoardTheme } from './BoardThemePicker';
 import { BoardNavigator } from './BoardNavigator';
+import { LiveCursors, getCursorColor } from './LiveCursors';
 
 const NOTE_WIDTH = 256;
 const NOTE_HEIGHT = 200;
@@ -97,7 +98,25 @@ function VoidBoardContent() {
   const noteIds = useMemo(() => notes.map(n => n.id), [notes]);
   const { addReaction, getReactionCounts, hasUserReacted } = useReactions(noteIds);
   const { getPosition } = useNotePositions();
-  const { remoteNotes, remotePositions, broadcastTyping, broadcastPosition, clearRemoteNote, clearRemotePosition, sessionId } = useRealtimeTyping(currentVoidId);
+  const { remoteNotes, remotePositions, broadcastTyping, broadcastPosition, broadcastCursor, clearRemoteNote, clearRemotePosition, remoteCursors, sessionId } = useRealtimeTyping(currentVoidId);
+  
+  // Broadcast cursor position on mouse move
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      broadcastCursor(e.clientX, e.clientY);
+    };
+    
+    window.addEventListener('mousemove', handleMouseMove);
+    return () => window.removeEventListener('mousemove', handleMouseMove);
+  }, [broadcastCursor]);
+  
+  // Convert cursors for rendering with colors
+  const cursorsWithColors = useMemo(() => {
+    return remoteCursors.map(cursor => ({
+      ...cursor,
+      color: getCursorColor(cursor.id),
+    }));
+  }, [remoteCursors]);
   
   // Zoom and pan
   const { scale, x, y, zoomIn, zoomOut, recenter } = useZoomPan();
@@ -455,6 +474,9 @@ function VoidBoardContent() {
 
       {/* Constellation Mode - Christmas Stars */}
       <ConstellationMode active={showConstellation} />
+
+      {/* Live Cursors */}
+      <LiveCursors cursors={cursorsWithColors} />
 
       {/* Note Trails */}
       {notes.map(note => {
