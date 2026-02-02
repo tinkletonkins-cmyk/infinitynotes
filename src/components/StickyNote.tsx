@@ -417,7 +417,7 @@ export function StickyNote({
             setTimeout(() => setIsLocallyEditing(false), 600);
           }}
           placeholder="type your thoughts..."
-          className="w-full h-32 p-3 bg-transparent resize-none focus:outline-none placeholder:opacity-50 font-handwriting"
+          className="w-full h-[140px] p-3 bg-transparent resize-none focus:outline-none placeholder:opacity-50 font-handwriting"
           style={{ color: 'inherit', fontFamily: "'Caveat', cursive", fontSize: '1.25rem' }}
         />
         {/* Remote typing indicator */}
