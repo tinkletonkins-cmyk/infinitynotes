@@ -15,6 +15,10 @@ import { NoteContextMenu } from './NoteContextMenu';
 import { useNotePositions } from '@/contexts/NotePositionsContext';
 import { TypingIndicator } from './TypingIndicator';
 import { useSnapToAlign } from '@/hooks/useSnapToAlign';
+import { supabase } from '@/integrations/supabase/client';
+
+// Debounce interval for saving drafts to database (2 seconds)
+const DRAFT_SAVE_INTERVAL_MS = 2000;
 
 interface StickyNoteProps {
   id: string;
@@ -102,6 +106,9 @@ export function StickyNote({
   const chatInputRef = useRef<HTMLInputElement>(null);
   const chatScrollRef = useRef<HTMLDivElement>(null);
   const lastPositionRef = useRef(initialPosition);
+  const draftSaveTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const lastDraftSaveRef = useRef<number>(0);
+  const pendingTextRef = useRef<string>(initialText);
   
   const { updatePosition, positions } = useNotePositions();
   const { snapPosition } = useSnapToAlign(positions, id);
@@ -153,7 +160,63 @@ export function StickyNote({
     setTags(initialTags);
   }, [initialTags.join(',')]);
 
-  // Sync text changes to database (debounced) and save history
+  // Debounced draft save - saves to database every 2 seconds while typing
+  const saveDraftToDatabase = useCallback(async (draftText: string) => {
+    const now = Date.now();
+    // Prevent saving too frequently
+    if (now - lastDraftSaveRef.current < DRAFT_SAVE_INTERVAL_MS) return;
+    
+    lastDraftSaveRef.current = now;
+    
+    // Use upsert to avoid duplicates - updates if exists, inserts if not
+    await supabase
+      .from('notes')
+      .update({ text: draftText })
+      .eq('id', id);
+      
+    console.log(`[StickyNote] Draft saved for note ${id}`);
+  }, [id]);
+
+  // Set up debounced save timer when text changes
+  useEffect(() => {
+    if (!isLocallyEditing) return;
+    
+    pendingTextRef.current = text;
+    
+    // Clear existing timer
+    if (draftSaveTimerRef.current) {
+      clearTimeout(draftSaveTimerRef.current);
+    }
+    
+    // Set new timer to save draft after 2 seconds of typing
+    draftSaveTimerRef.current = setTimeout(() => {
+      saveDraftToDatabase(pendingTextRef.current);
+    }, DRAFT_SAVE_INTERVAL_MS);
+    
+    return () => {
+      if (draftSaveTimerRef.current) {
+        clearTimeout(draftSaveTimerRef.current);
+      }
+    };
+  }, [text, isLocallyEditing, saveDraftToDatabase]);
+
+  // Save immediately when user stops editing (blur or component unmount)
+  useEffect(() => {
+    return () => {
+      // On unmount, save any pending text immediately
+      if (pendingTextRef.current !== lastSavedText) {
+        supabase
+          .from('notes')
+          .update({ text: pendingTextRef.current })
+          .eq('id', id)
+          .then(() => {
+            console.log(`[StickyNote] Final save on unmount for note ${id}`);
+          });
+      }
+    };
+  }, [id, lastSavedText]);
+
+  // Sync text changes to parent and save history (original behavior)
   useEffect(() => {
     const timeout = setTimeout(async () => {
       if (text !== initialText) {
@@ -171,12 +234,17 @@ export function StickyNote({
     return () => clearTimeout(timeout);
   }, [text, id, initialText, onUpdate, lastSavedText, addHistoryEntry, color, shape, onTypingComplete]);
 
-  // Clear remote text when we receive database update matching our text
+  // Sync local state with database value when not editing (for new tabs)
   useEffect(() => {
-    if (initialText && !isLocallyEditing) {
+    // Only sync when we're NOT locally editing and the DB has newer data
+    if (!isLocallyEditing && initialText !== undefined) {
+      // Update local text to match DB when not editing
+      setText(initialText);
+      pendingTextRef.current = initialText;
+      setLastSavedText(initialText);
       onTypingComplete?.();
     }
-  }, [initialText, isLocallyEditing, onTypingComplete]);
+  }, [initialText]); // Only re-run when initialText changes from DB
 
   // Auto-scroll chat
   useEffect(() => {
