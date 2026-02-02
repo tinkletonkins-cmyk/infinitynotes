@@ -1,11 +1,12 @@
 import React, { useState, useCallback, useMemo, useEffect } from 'react';
-import { Plus, Loader2, Link2, X, Sparkles } from 'lucide-react';
+import { Plus, Loader2, Link2, X, Sparkles, BookOpen, Zap } from 'lucide-react';
 import { StickyNote } from './StickyNote';
 import { Switch } from '@/components/ui/switch';
 import { useNotes, Note } from '@/hooks/useNotes';
 import { useConnections } from '@/hooks/useConnections';
 import { useAuth } from '@/hooks/useAuth';
 import { useVoids } from '@/hooks/useVoids';
+import { useVoidAI } from '@/hooks/useVoidAI';
 import { SearchBar } from './SearchBar';
 import { NotePositionsProvider, useNotePositions } from '@/contexts/NotePositionsContext';
 import { WelcomeIntro } from './WelcomeIntro';
@@ -17,6 +18,9 @@ import { useToast } from '@/hooks/use-toast';
 import { AmbientSound } from './AmbientSound';
 import { NoteTrail } from './NoteTrail';
 import { ConstellationMode } from './ConstellationMode';
+import { MoodWeather } from './MoodWeather';
+import { VoidSummaryModal } from './VoidSummaryModal';
+import { ConnectionSuggestions } from './ConnectionSuggestions';
 
 const NOTE_WIDTH = 256;
 const NOTE_HEIGHT = 200;
@@ -85,6 +89,18 @@ function VoidBoardContent() {
   const { connections, addConnection, removeConnectionsForNote } = useConnections(currentVoidId);
   const { getPosition } = useNotePositions();
   
+  // AI features
+  const {
+    summary,
+    isLoadingSummary,
+    generateSummary,
+    clearSummary,
+    connectionSuggestions,
+    isLoadingConnections,
+    suggestConnections,
+    clearSuggestions,
+  } = useVoidAI();
+  
   const [isBoardMode, setIsBoardMode] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [connectingFrom, setConnectingFrom] = useState<string | null>(null);
@@ -92,6 +108,8 @@ function VoidBoardContent() {
   const [showConstellation, setShowConstellation] = useState(false);
   const [showWelcome, setShowWelcome] = useState(false);
   const [dragStates, setDragStates] = useState<Record<string, { isDragging: boolean; x: number; y: number }>>({});
+  const [showSummaryModal, setShowSummaryModal] = useState(false);
+  const [showSuggestionsModal, setShowSuggestionsModal] = useState(false);
   
   // Show welcome intro for non-signed-in users
   useEffect(() => {
@@ -313,6 +331,25 @@ function VoidBoardContent() {
     });
   };
 
+  // AI handlers
+  const handleGenerateSummary = useCallback(() => {
+    setShowSummaryModal(true);
+    generateSummary(notes);
+  }, [notes, generateSummary]);
+
+  const handleSuggestConnections = useCallback(() => {
+    setShowSuggestionsModal(true);
+    suggestConnections(notes);
+  }, [notes, suggestConnections]);
+
+  const handleAcceptSuggestion = useCallback(async (fromId: string, toId: string) => {
+    await addConnection(fromId, toId);
+    toast({
+      title: 'Connection created!',
+      description: 'AI suggestion accepted.',
+    });
+  }, [addConnection, toast]);
+
   const currentVoid = currentVoidId ? voids.find(v => v.id === currentVoidId) : null;
 
   return (
@@ -335,6 +372,25 @@ function VoidBoardContent() {
         onSubmit={handleJoinVoid}
       />
 
+      {/* AI Modals */}
+      <VoidSummaryModal
+        isOpen={showSummaryModal}
+        onClose={() => { setShowSummaryModal(false); clearSummary(); }}
+        summary={summary}
+        isLoading={isLoadingSummary}
+      />
+      <ConnectionSuggestions
+        isOpen={showSuggestionsModal}
+        onClose={() => { setShowSuggestionsModal(false); clearSuggestions(); }}
+        suggestions={connectionSuggestions}
+        isLoading={isLoadingConnections}
+        notes={notes}
+        onAccept={handleAcceptSuggestion}
+      />
+
+      {/* Mood Weather Background */}
+      <MoodWeather notes={notes} />
+
       {/* Constellation Mode - Christmas Stars */}
       <ConstellationMode active={showConstellation} />
 
@@ -354,7 +410,6 @@ function VoidBoardContent() {
           />
         );
       })}
-
 
       {/* Ambient Sound Control */}
       <AmbientSound noteCount={notes.length} />
@@ -430,6 +485,28 @@ function VoidBoardContent() {
       >
         <Sparkles size={14} />
         <span className="text-xs uppercase tracking-widest font-mono">Stars</span>
+      </button>
+
+      {/* AI: Void Summary button */}
+      <button
+        onClick={handleGenerateSummary}
+        disabled={isLoadingSummary || notes.length === 0}
+        className="fixed top-44 right-4 z-50 flex items-center gap-2 px-3 py-2 border border-foreground bg-background hover:bg-foreground hover:text-background transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        title="Generate poetic void summary"
+      >
+        <BookOpen size={14} />
+        <span className="text-xs uppercase tracking-widest font-mono">Summary</span>
+      </button>
+
+      {/* AI: Suggest Connections button */}
+      <button
+        onClick={handleSuggestConnections}
+        disabled={isLoadingConnections || notes.length < 2}
+        className="fixed top-56 right-4 z-50 flex items-center gap-2 px-3 py-2 border border-foreground bg-background hover:bg-foreground hover:text-background transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        title="AI suggests note connections"
+      >
+        <Zap size={14} />
+        <span className="text-xs uppercase tracking-widest font-mono">Connect</span>
       </button>
 
       {/* Loading state */}
