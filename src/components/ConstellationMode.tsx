@@ -1,17 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Note } from '@/hooks/useNotes';
-import { Connection } from '@/hooks/useConnections';
-import { useNotePositions } from '@/contexts/NotePositionsContext';
-import { motion } from 'framer-motion';
-
-const NOTE_WIDTH = 256;
-const NOTE_HEIGHT = 200;
-
-interface ConstellationModeProps {
-  notes: Note[];
-  connections: Connection[];
-  active: boolean;
-}
+import { motion, AnimatePresence } from 'framer-motion';
 
 interface StarPoint {
   id: string;
@@ -19,139 +7,143 @@ interface StarPoint {
   y: number;
   size: number;
   twinkleDelay: number;
+  rotation: number;
 }
 
-export function ConstellationMode({ notes, connections, active }: ConstellationModeProps) {
-  const { getPosition, forceUpdate } = useNotePositions();
-  const [stars, setStars] = useState<StarPoint[]>([]);
+interface ConstellationModeProps {
+  active: boolean;
+}
 
-  // Generate star positions for connected notes
-  useEffect(() => {
-    if (!active) return;
-
-    const connectedNoteIds = new Set<string>();
-    connections.forEach(c => {
-      connectedNoteIds.add(c.from_note_id);
-      connectedNoteIds.add(c.to_note_id);
+function generateStars(count: number): StarPoint[] {
+  const stars: StarPoint[] = [];
+  for (let i = 0; i < count; i++) {
+    stars.push({
+      id: `star-${i}`,
+      x: Math.random() * 100,
+      y: Math.random() * 100,
+      size: 8 + Math.random() * 16,
+      twinkleDelay: Math.random() * 3,
+      rotation: Math.random() * 360,
     });
+  }
+  return stars;
+}
 
-    const newStars: StarPoint[] = [];
-    connectedNoteIds.forEach(noteId => {
-      const pos = getPosition(noteId);
-      const note = notes.find(n => n.id === noteId);
-      const position = pos || note?.position;
-      
-      if (position) {
-        newStars.push({
-          id: noteId,
-          x: position.x + NOTE_WIDTH / 2,
-          y: position.y + NOTE_HEIGHT / 2,
-          size: 4 + Math.random() * 4,
-          twinkleDelay: Math.random() * 2,
-        });
-      }
-    });
-
-    setStars(newStars);
-  }, [active, connections, notes, getPosition, forceUpdate]);
-
-  if (!active || connections.length === 0) return null;
+function ChristmasStar({ size, color = '#FFD700' }: { size: number; color?: string }) {
+  const points = 5;
+  const outerRadius = size / 2;
+  const innerRadius = outerRadius * 0.4;
+  
+  let path = '';
+  for (let i = 0; i < points * 2; i++) {
+    const radius = i % 2 === 0 ? outerRadius : innerRadius;
+    const angle = (Math.PI / points) * i - Math.PI / 2;
+    const x = outerRadius + radius * Math.cos(angle);
+    const y = outerRadius + radius * Math.sin(angle);
+    path += `${i === 0 ? 'M' : 'L'} ${x} ${y} `;
+  }
+  path += 'Z';
 
   return (
-    <div className="fixed inset-0 z-[9998] pointer-events-none">
-      {/* Dark overlay for constellation effect */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 0.7 }}
-        exit={{ opacity: 0 }}
-        className="absolute inset-0 bg-background"
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+      <defs>
+        <filter id={`glow-${size}`} x="-100%" y="-100%" width="300%" height="300%">
+          <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+          <feMerge>
+            <feMergeNode in="coloredBlur"/>
+            <feMergeNode in="SourceGraphic"/>
+          </feMerge>
+        </filter>
+        <linearGradient id={`starGradient-${size}`} x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#FFFACD" />
+          <stop offset="50%" stopColor={color} />
+          <stop offset="100%" stopColor="#FFA500" />
+        </linearGradient>
+      </defs>
+      <path 
+        d={path} 
+        fill={`url(#starGradient-${size})`}
+        filter={`url(#glow-${size})`}
       />
+    </svg>
+  );
+}
 
-      {/* SVG for constellation lines */}
-      <svg
-        className="absolute inset-0 w-full h-full"
-        style={{ filter: 'drop-shadow(0 0 6px rgba(255,255,255,0.8)) drop-shadow(0 0 20px rgba(100,150,255,0.5))' }}
-      >
-        <defs>
-          <linearGradient id="starline" x1="0%" y1="0%" x2="100%" y2="0%">
-            <stop offset="0%" stopColor="rgba(150, 200, 255, 0.8)" />
-            <stop offset="50%" stopColor="rgba(255, 255, 255, 1)" />
-            <stop offset="100%" stopColor="rgba(150, 200, 255, 0.8)" />
-          </linearGradient>
-        </defs>
+export function ConstellationMode({ active }: ConstellationModeProps) {
+  const [stars, setStars] = useState<StarPoint[]>([]);
 
-        {/* Connection lines as constellation lines */}
-        {connections.map(conn => {
-          const fromNote = notes.find(n => n.id === conn.from_note_id);
-          const toNote = notes.find(n => n.id === conn.to_note_id);
-          
-          if (!fromNote || !toNote) return null;
-          
-          const fromPos = getPosition(conn.from_note_id) || fromNote.position;
-          const toPos = getPosition(conn.to_note_id) || toNote.position;
-          
-          const fromCenter = { x: fromPos.x + NOTE_WIDTH / 2, y: fromPos.y + NOTE_HEIGHT / 2 };
-          const toCenter = { x: toPos.x + NOTE_WIDTH / 2, y: toPos.y + NOTE_HEIGHT / 2 };
-          
-          return (
-            <motion.line
-              key={conn.id}
-              initial={{ pathLength: 0, opacity: 0 }}
-              animate={{ pathLength: 1, opacity: 1 }}
-              transition={{ duration: 1, delay: 0.3 }}
-              x1={fromCenter.x}
-              y1={fromCenter.y}
-              x2={toCenter.x}
-              y2={toCenter.y}
-              stroke="url(#starline)"
-              strokeWidth={2}
-              strokeLinecap="round"
-            />
-          );
-        })}
-      </svg>
+  useEffect(() => {
+    if (active) {
+      setStars(generateStars(30));
+    }
+  }, [active]);
 
-      {/* Star points at note centers */}
-      {stars.map(star => (
-        <motion.div
-          key={star.id}
-          initial={{ scale: 0, opacity: 0 }}
-          animate={{ 
-            scale: [1, 1.3, 1],
-            opacity: [0.8, 1, 0.8],
-          }}
-          transition={{
-            duration: 2,
-            delay: star.twinkleDelay,
-            repeat: Infinity,
-            repeatType: 'loop',
-          }}
-          className="absolute rounded-full"
-          style={{
-            left: star.x - star.size / 2,
-            top: star.y - star.size / 2,
-            width: star.size,
-            height: star.size,
-            background: 'radial-gradient(circle, rgba(255,255,255,1) 0%, rgba(150,200,255,0.8) 50%, transparent 100%)',
-            boxShadow: `0 0 ${star.size * 2}px rgba(150,200,255,0.8), 0 0 ${star.size * 4}px rgba(100,150,255,0.5)`,
-          }}
-        />
-      ))}
+  return (
+    <AnimatePresence>
+      {active && (
+        <motion.div 
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.5 }}
+          className="fixed inset-0 z-[9998] pointer-events-none overflow-hidden"
+        >
+          {/* Dark overlay */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 0.6 }}
+            exit={{ opacity: 0 }}
+            className="absolute inset-0 bg-background"
+          />
 
-      {/* Instruction text */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.5 }}
-        className="absolute bottom-20 left-1/2 -translate-x-1/2 text-center"
-      >
-        <p className="text-sm uppercase tracking-[0.3em] text-white/60 font-mono">
-          Constellation View
-        </p>
-        <p className="text-xs text-white/40 mt-2">
-          {connections.length} connection{connections.length !== 1 ? 's' : ''} · {stars.length} star{stars.length !== 1 ? 's' : ''}
-        </p>
-      </motion.div>
-    </div>
+          {/* Christmas Stars */}
+          {stars.map(star => (
+            <motion.div
+              key={star.id}
+              initial={{ scale: 0, opacity: 0, rotate: star.rotation }}
+              animate={{ 
+                scale: [0.8, 1.2, 0.8],
+                opacity: [0.4, 1, 0.4],
+                rotate: [star.rotation, star.rotation + 10, star.rotation],
+              }}
+              exit={{ scale: 0, opacity: 0 }}
+              transition={{
+                duration: 2 + Math.random(),
+                delay: star.twinkleDelay,
+                repeat: Infinity,
+                repeatType: 'loop',
+                ease: 'easeInOut',
+              }}
+              className="absolute"
+              style={{
+                left: `${star.x}%`,
+                top: `${star.y}%`,
+                filter: `drop-shadow(0 0 ${star.size / 2}px rgba(255, 215, 0, 0.8)) drop-shadow(0 0 ${star.size}px rgba(255, 165, 0, 0.5))`,
+              }}
+            >
+              <ChristmasStar 
+                size={star.size} 
+                color={['#FFD700', '#FFA500', '#FFFACD', '#FFE4B5'][Math.floor(Math.random() * 4)]}
+              />
+            </motion.div>
+          ))}
+
+          {/* Instruction text */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.5 }}
+            className="absolute bottom-20 left-1/2 -translate-x-1/2 text-center"
+          >
+            <p className="text-sm uppercase tracking-[0.3em] text-white/60 font-mono">
+              ✨ Stargazing Mode ✨
+            </p>
+            <p className="text-xs text-white/40 mt-2">
+              {stars.length} stars twinkling in the void
+            </p>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 }

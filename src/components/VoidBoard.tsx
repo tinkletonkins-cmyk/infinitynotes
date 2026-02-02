@@ -1,12 +1,11 @@
 import React, { useState, useCallback, useMemo, useEffect } from 'react';
-import { Plus, Loader2, Link2, X, Eye, EyeOff, Sparkles } from 'lucide-react';
+import { Plus, Loader2, Link2, X, Sparkles } from 'lucide-react';
 import { StickyNote } from './StickyNote';
 import { Switch } from '@/components/ui/switch';
 import { useNotes, Note } from '@/hooks/useNotes';
 import { useConnections } from '@/hooks/useConnections';
 import { useAuth } from '@/hooks/useAuth';
 import { useVoids } from '@/hooks/useVoids';
-import { ConnectionsOverlay } from './ConnectionsOverlay';
 import { SearchBar } from './SearchBar';
 import { NotePositionsProvider, useNotePositions } from '@/contexts/NotePositionsContext';
 import { WelcomeIntro } from './WelcomeIntro';
@@ -90,7 +89,6 @@ function VoidBoardContent() {
   const [searchQuery, setSearchQuery] = useState('');
   const [connectingFrom, setConnectingFrom] = useState<string | null>(null);
   const [mousePosition, setMousePosition] = useState<{ x: number; y: number } | null>(null);
-  const [showLines, setShowLines] = useState(false);
   const [showConstellation, setShowConstellation] = useState(false);
   const [showWelcome, setShowWelcome] = useState(false);
   const [dragStates, setDragStates] = useState<Record<string, { isDragging: boolean; x: number; y: number }>>({});
@@ -337,12 +335,8 @@ function VoidBoardContent() {
         onSubmit={handleJoinVoid}
       />
 
-      {/* Constellation Mode */}
-      <ConstellationMode 
-        notes={notes}
-        connections={connections}
-        active={showConstellation}
-      />
+      {/* Constellation Mode - Christmas Stars */}
+      <ConstellationMode active={showConstellation} />
 
       {/* Note Trails */}
       {notes.map(note => {
@@ -361,15 +355,6 @@ function VoidBoardContent() {
         );
       })}
 
-      {/* SVG Connections Overlay */}
-      <ConnectionsOverlay 
-        notes={notes} 
-        connections={connections}
-        searchQuery={searchQuery} 
-        visible={showLines}
-        connectingFrom={connectingFrom}
-        mousePosition={mousePosition}
-      />
 
       {/* Ambient Sound Control */}
       <AmbientSound noteCount={notes.length} />
@@ -437,22 +422,11 @@ function VoidBoardContent() {
         </span>
       </div>
 
-      {/* Lines toggle */}
-      <button
-        onClick={() => setShowLines(!showLines)}
-        className="fixed top-32 right-4 z-50 flex items-center gap-2 px-3 py-2 border border-foreground bg-background hover:bg-foreground hover:text-background transition-colors"
-        title={showLines ? 'Hide connection lines' : 'Show connection lines'}
-      >
-        {showLines ? <Eye size={14} /> : <EyeOff size={14} />}
-        <span className="text-xs uppercase tracking-widest font-mono">Lines</span>
-      </button>
-
       {/* Constellation mode toggle */}
       <button
         onClick={() => setShowConstellation(!showConstellation)}
-        className={`fixed top-44 right-4 z-50 flex items-center gap-2 px-3 py-2 border border-foreground transition-colors ${showConstellation ? 'bg-foreground text-background' : 'bg-background hover:bg-foreground hover:text-background'}`}
-        title={showConstellation ? 'Exit constellation mode' : 'Enter constellation mode'}
-        disabled={connections.length === 0}
+        className={`fixed top-32 right-4 z-50 flex items-center gap-2 px-3 py-2 border border-foreground transition-colors ${showConstellation ? 'bg-foreground text-background' : 'bg-background hover:bg-foreground hover:text-background'}`}
+        title={showConstellation ? 'Exit stargazing mode' : 'Enter stargazing mode'}
       >
         <Sparkles size={14} />
         <span className="text-xs uppercase tracking-widest font-mono">Stars</span>
