@@ -36,12 +36,15 @@ export function BoardThemePicker({ currentTheme, onThemeSelect }: BoardThemePick
       <AnimatePresence>
         {isOpen && (
           <>
-            <div className="fixed inset-0 z-40" onClick={() => setIsOpen(false)} />
+            <div 
+              className="fixed inset-0 z-[100]" 
+              onClick={(e) => { e.stopPropagation(); setIsOpen(false); }} 
+            />
             <motion.div
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
-              className="absolute top-full right-0 mt-2 w-48 border border-foreground bg-background z-50 shadow-lg"
+              className="absolute top-full right-0 mt-2 w-48 border border-foreground bg-background z-[101] shadow-lg"
             >
               <div className="p-2 text-xs uppercase tracking-wider text-muted-foreground border-b border-foreground/20">
                 Board Theme

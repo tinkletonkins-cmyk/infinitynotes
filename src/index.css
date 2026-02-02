@@ -213,17 +213,19 @@
     50% { background-position: 20px 10px, 0 0; }
   }
   
-  /* Handwriting fonts */
+  /* Handwriting fonts - force override monospace default */
   .font-handwriting {
-    font-family: 'Caveat', cursive;
+    font-family: 'Caveat', cursive !important;
+    font-size: 1.25rem !important;
+    line-height: 1.5 !important;
   }
   
   .font-handwriting-alt {
-    font-family: 'Kalam', cursive;
+    font-family: 'Kalam', cursive !important;
   }
   
   .font-handwriting-casual {
-    font-family: 'Patrick Hand', cursive;
+    font-family: 'Patrick Hand', cursive !important;
   }
   
   /* Note shape masks */
