@@ -267,8 +267,8 @@ export function StickyNote({
           value={text}
           onChange={(e) => setText(e.target.value)}
           placeholder="type your thoughts..."
-          className="w-full h-32 p-3 bg-transparent resize-none focus:outline-none placeholder:opacity-50 font-handwriting text-xl leading-relaxed"
-          style={{ color: 'inherit' }}
+          className="w-full h-32 p-3 bg-transparent resize-none focus:outline-none placeholder:opacity-50 font-handwriting"
+          style={{ color: 'inherit', fontFamily: "'Caveat', cursive", fontSize: '1.25rem' }}
         />
 
         {/* Emotion indicator */}
