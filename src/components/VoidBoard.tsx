@@ -96,7 +96,7 @@ function VoidBoardContent() {
   const { toast } = useToast();
   
   const [currentVoidId, setCurrentVoidId] = useState<string | null>(null);
-  const { notes, isLoading, addNote, updateNote, deleteNote } = useNotes(currentVoidId);
+  const { notes, isLoading, addNote, updateNote, deleteNote, setNoteEditing } = useNotes(currentVoidId);
   const { connections, addConnection, removeConnectionsForNote } = useConnections(currentVoidId);
   const noteIds = useMemo(() => notes.map(n => n.id), [notes]);
   const { addReaction, getReactionCounts, hasUserReacted } = useReactions(noteIds);
@@ -724,6 +724,7 @@ function VoidBoardContent() {
               onTypingComplete={() => clearRemoteNote(note.id)}
               onPositionChange={(x, y) => broadcastPosition(note.id, x, y)}
               onPositionComplete={() => clearRemotePosition(note.id)}
+              onEditingChange={(isEditing) => setNoteEditing(note.id, isEditing)}
             />
           );
         })}
