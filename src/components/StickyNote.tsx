@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { motion, useMotionValue, useSpring } from 'framer-motion';
-import { MessageCircle, X, GripVertical, Send, Link2, Clock } from 'lucide-react';
+import { MessageCircle, X, GripVertical, Send, Link2, Clock, Lock } from 'lucide-react';
 import { useSentiment, getEmotionClass, EmotionType } from '@/hooks/useSentiment';
 import { getAIResponse, getAIChatResponse } from '@/utils/aiResponses';
 import { useNoteMessages } from '@/hooks/useNoteMessages';
@@ -11,6 +11,7 @@ import { NoteShapePicker, NoteShape } from './NoteShapePicker';
 import { NoteReactions } from './NoteReactions';
 import { NoteTags } from './NoteTags';
 import { NoteHistoryModal } from './NoteHistoryModal';
+import { NoteContextMenu } from './NoteContextMenu';
 import { useNotePositions } from '@/contexts/NotePositionsContext';
 import { TypingIndicator } from './TypingIndicator';
 import { useSnapToAlign } from '@/hooks/useSnapToAlign';
@@ -23,6 +24,8 @@ interface StickyNoteProps {
   initialColor: string | null;
   initialShape?: NoteShape;
   initialTags?: string[];
+  isLocked: boolean;
+  lockedBy: string | null;
   dimmed: boolean;
   isConnecting: boolean;
   isConnectionTarget: boolean;
@@ -30,6 +33,8 @@ interface StickyNoteProps {
   hasUserReacted: (emoji: string) => boolean;
   onReact: (emoji: string) => void;
   onDelete: (id: string) => void;
+  onLock: (id: string) => void;
+  onUnlock: (id: string) => void;
   onUpdate: (id: string, updates: { text?: string; position?: { x: number; y: number }; color?: string | null; shape?: NoteShape; tags?: string[] }) => void;
   onDrop: (id: string, position: { x: number; y: number }) => void;
   onStartConnection: (id: string) => void;
@@ -59,6 +64,8 @@ export function StickyNote({
   initialColor,
   initialShape = 'square',
   initialTags = [],
+  isLocked,
+  lockedBy,
   dimmed,
   isConnecting,
   isConnectionTarget,
@@ -66,6 +73,8 @@ export function StickyNote({
   hasUserReacted,
   onReact,
   onDelete, 
+  onLock,
+  onUnlock,
   onUpdate,
   onDrop,
   onStartConnection,
@@ -293,45 +302,59 @@ export function StickyNote({
     ? { backgroundColor: displayColor }
     : undefined;
 
-  const handleNoteClick = useCallback((e: React.MouseEvent) => {
-    // If we're in connection mode and this note is a valid target, complete the connection
-    if (isConnectionTarget) {
-      e.stopPropagation();
-      onCompleteConnection(id);
-    }
-  }, [isConnectionTarget, onCompleteConnection, id]);
+  const handleCopyText = useCallback(() => {
+    navigator.clipboard.writeText(text);
+  }, [text]);
+
+  // Prevent actions on locked notes
+  const canEdit = !isLocked;
+  const canDrag = !isLocked && !isConnectionTarget;
 
   return (
-    <motion.div
-      drag={!isConnectionTarget}
-      dragMomentum={false}
-      dragElastic={0.1}
-      dragTransition={{
-        bounceStiffness: 600,
-        bounceDamping: 20,
-        power: 0.3,
-      }}
-      style={{
-        x: springX,
-        y: springY,
-        rotate: initialRotation,
-        zIndex: isDragging ? 1000 : 1,
-      }}
-      onDragStart={handleDragStart}
-      onDrag={handleDrag}
-      onDragEnd={handleDragEnd}
-      onClick={handleNoteClick}
-      whileDrag={{ 
-        scale: 1.02,
-        boxShadow: "0 10px 30px rgba(0,0,0,0.3)",
-        cursor: "grabbing",
-      }}
-      transition={{
-        scale: { duration: 0.1 },
-        boxShadow: { duration: 0.1 },
-      }}
-      className={`absolute w-64 cursor-grab note-shape-${shape} ${dimmed ? 'opacity-10 pointer-events-none' : ''} ${isConnectionTarget ? 'ring-2 ring-cyan-400 ring-offset-2 ring-offset-background cursor-pointer' : ''} ${isConnecting ? 'ring-2 ring-yellow-400' : ''}`}
+    <NoteContextMenu
+      isLocked={isLocked}
+      lockedBy={lockedBy}
+      onLock={() => onLock(id)}
+      onUnlock={() => onUnlock(id)}
+      onDelete={() => onDelete(id)}
+      onCopy={handleCopyText}
+      onStartConnection={() => onStartConnection(id)}
     >
+      <motion.div
+        drag={canDrag}
+        dragMomentum={false}
+        dragElastic={0.1}
+        dragTransition={{
+          bounceStiffness: 600,
+          bounceDamping: 20,
+          power: 0.3,
+        }}
+        style={{
+          x: springX,
+          y: springY,
+          rotate: initialRotation,
+          zIndex: isDragging ? 1000 : 1,
+        }}
+        onDragStart={canDrag ? handleDragStart : undefined}
+        onDrag={canDrag ? handleDrag : undefined}
+        onDragEnd={canDrag ? handleDragEnd : undefined}
+        onClick={(e: React.MouseEvent) => {
+          if (isConnectionTarget) {
+            e.stopPropagation();
+            onCompleteConnection(id);
+          }
+        }}
+        whileDrag={canDrag ? { 
+          scale: 1.02,
+          boxShadow: "0 10px 30px rgba(0,0,0,0.3)",
+          cursor: "grabbing",
+        } : undefined}
+        transition={{
+          scale: { duration: 0.1 },
+          boxShadow: { duration: 0.1 },
+        }}
+        className={`absolute w-64 ${canDrag ? 'cursor-grab' : 'cursor-default'} note-shape-${shape} ${dimmed ? 'opacity-10 pointer-events-none' : ''} ${isConnectionTarget ? 'ring-2 ring-cyan-400 ring-offset-2 ring-offset-background cursor-pointer' : ''} ${isConnecting ? 'ring-2 ring-yellow-400' : ''} ${isLocked ? 'ring-1 ring-amber-500/50' : ''}`}
+      >
       <div
         style={backgroundStyle}
         className={`relative w-full h-full ${!displayColor ? emotionClass : ''} border border-foreground ${shape === 'circle' ? 'aspect-square flex flex-col' : ''} note-glow note-glow-${!displayColor ? emotion : 'custom'}`}
@@ -339,7 +362,12 @@ export function StickyNote({
         {/* Header with drag handle */}
         <div className="flex items-center justify-between p-2 border-b border-current">
           <div className="flex items-center gap-1">
-            <GripVertical size={16} className="opacity-50" />
+            <GripVertical size={16} className={`opacity-50 ${isLocked ? 'opacity-30' : ''}`} />
+            {isLocked && (
+              <span title={`Locked by ${lockedBy}`}>
+                <Lock size={12} className="text-amber-500" />
+              </span>
+            )}
           </div>
           <div className="flex gap-1">
             <button
@@ -472,5 +500,6 @@ export function StickyNote({
         />
       </div>
     </motion.div>
+    </NoteContextMenu>
   );
 }
