@@ -202,6 +202,8 @@ export type Database = {
           color: string | null
           created_at: string
           id: string
+          is_locked: boolean
+          locked_by: string | null
           parent_id: string | null
           position_x: number
           position_y: number
@@ -215,6 +217,8 @@ export type Database = {
           color?: string | null
           created_at?: string
           id?: string
+          is_locked?: boolean
+          locked_by?: string | null
           parent_id?: string | null
           position_x?: number
           position_y?: number
@@ -228,6 +232,8 @@ export type Database = {
           color?: string | null
           created_at?: string
           id?: string
+          is_locked?: boolean
+          locked_by?: string | null
           parent_id?: string | null
           position_x?: number
           position_y?: number

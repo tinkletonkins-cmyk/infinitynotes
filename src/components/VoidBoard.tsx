@@ -28,6 +28,7 @@ import { VoidSummaryModal } from './VoidSummaryModal';
 import { ConnectionSuggestions } from './ConnectionSuggestions';
 import { BoardThemePicker, BoardTheme } from './BoardThemePicker';
 import { BoardNavigator } from './BoardNavigator';
+import { BoardHistorySlider } from './BoardHistorySlider';
 import { LiveCursors, getCursorColor } from './LiveCursors';
 
 const NOTE_WIDTH = 256;
@@ -283,9 +284,42 @@ function VoidBoardContent() {
   }, [addReaction]);
 
   const handleDeleteNote = useCallback((id: string) => {
+    const note = notes.find(n => n.id === id);
+    if (note?.is_locked) {
+      toast({
+        title: 'Note is locked',
+        description: 'Unlock the note before deleting.',
+        variant: 'destructive',
+      });
+      return;
+    }
     removeConnectionsForNote(id);
     deleteNote(id);
-  }, [deleteNote, removeConnectionsForNote]);
+  }, [deleteNote, removeConnectionsForNote, notes, toast]);
+
+  const handleLockNote = useCallback((id: string) => {
+    const lockName = user?.email?.split('@')[0] || 'anonymous';
+    updateNote(id, { is_locked: true, locked_by: lockName });
+    toast({
+      title: 'Note locked',
+      description: 'This note is now protected from editing.',
+    });
+  }, [updateNote, user, toast]);
+
+  const handleUnlockNote = useCallback((id: string) => {
+    updateNote(id, { is_locked: false, locked_by: null });
+    toast({
+      title: 'Note unlocked',
+      description: 'This note can now be edited.',
+    });
+  }, [updateNote, toast]);
+
+  const handleCopyFromHistory = useCallback((text: string) => {
+    toast({
+      title: 'Copied to clipboard',
+      description: 'Paste it into a new note to restore.',
+    });
+  }, [toast]);
 
   const handleStartConnection = useCallback((noteId: string) => {
     if (connectingFrom === noteId) {
@@ -646,6 +680,8 @@ function VoidBoardContent() {
               initialColor={note.color}
               initialShape={note.shape}
               initialTags={note.tags}
+              isLocked={note.is_locked}
+              lockedBy={note.locked_by}
               dimmed={(searchQuery.trim() !== '' || selectedTags.length > 0) && !isMatch}
               isConnecting={isConnecting}
               isConnectionTarget={isConnectionTarget}
@@ -653,6 +689,8 @@ function VoidBoardContent() {
               hasUserReacted={(emoji) => hasUserReacted(note.id, emoji)}
               onReact={(emoji) => handleReact(note.id, emoji)}
               onDelete={handleDeleteNote}
+              onLock={handleLockNote}
+              onUnlock={handleUnlockNote}
               onUpdate={handleUpdateNote}
               onDrop={handleNoteDrop}
               onStartConnection={handleStartConnection}
@@ -697,6 +735,13 @@ function VoidBoardContent() {
         onRecenter={recenter}
         onZoomIn={zoomIn}
         onZoomOut={zoomOut}
+      />
+
+      {/* Board History Slider */}
+      <BoardHistorySlider
+        voidId={currentVoidId}
+        currentNotes={notes}
+        onCopyNote={handleCopyFromHistory}
       />
 
       {/* Footer */}

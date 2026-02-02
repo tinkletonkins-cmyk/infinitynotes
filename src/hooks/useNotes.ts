@@ -12,6 +12,8 @@ export interface Note {
   shape: NoteShape;
   void_id: string | null;
   tags: string[];
+  is_locked: boolean;
+  locked_by: string | null;
 }
 
 function generateId(): string {
@@ -64,6 +66,8 @@ export function useNotes(voidId: string | null = null) {
           shape: (n.shape as NoteShape) ?? 'square',
           void_id: n.void_id ?? null,
           tags: n.tags ?? [],
+          is_locked: n.is_locked ?? false,
+          locked_by: n.locked_by ?? null,
         })));
       }
       setIsLoading(false);
@@ -99,13 +103,25 @@ export function useNotes(voidId: string | null = null) {
                 shape: (n.shape as NoteShape) ?? 'square',
                 void_id: n.void_id ?? null,
                 tags: n.tags ?? [],
+                is_locked: n.is_locked ?? false,
+                locked_by: n.locked_by ?? null,
               }];
             });
           } else if (payload.eventType === 'UPDATE') {
             if (noteVoidId !== voidId) return;
             setNotes(prev => prev.map(note => 
               note.id === n.id 
-                ? { ...note, text: n.text, position: { x: n.position_x, y: n.position_y }, color: n.color ?? null, shape: (n.shape as NoteShape) ?? 'square', parent_id: n.parent_id, tags: n.tags ?? [] }
+                ? { 
+                    ...note, 
+                    text: n.text, 
+                    position: { x: n.position_x, y: n.position_y }, 
+                    color: n.color ?? null, 
+                    shape: (n.shape as NoteShape) ?? 'square', 
+                    parent_id: n.parent_id, 
+                    tags: n.tags ?? [],
+                    is_locked: n.is_locked ?? false,
+                    locked_by: n.locked_by ?? null,
+                  }
                 : note
             ));
           } else if (payload.eventType === 'DELETE') {
@@ -140,6 +156,8 @@ export function useNotes(voidId: string | null = null) {
       shape: 'square',
       void_id: voidId,
       tags: [],
+      is_locked: false,
+      locked_by: null,
     };
     setNotes(prev => [...prev, newNote]);
 
@@ -158,7 +176,7 @@ export function useNotes(voidId: string | null = null) {
     return id;
   }, [voidId]);
 
-  const updateNote = useCallback(async (id: string, updates: Partial<Pick<Note, 'text' | 'position' | 'color' | 'parent_id' | 'shape' | 'tags'>>) => {
+  const updateNote = useCallback(async (id: string, updates: Partial<Pick<Note, 'text' | 'position' | 'color' | 'parent_id' | 'shape' | 'tags' | 'is_locked' | 'locked_by'>>) => {
     // Optimistic update
     setNotes(prev => prev.map(note => 
       note.id === id ? { ...note, ...updates } : note
@@ -175,6 +193,8 @@ export function useNotes(voidId: string | null = null) {
     if (updates.parent_id !== undefined) dbUpdates.parent_id = updates.parent_id;
     if (updates.shape !== undefined) dbUpdates.shape = updates.shape;
     if (updates.tags !== undefined) dbUpdates.tags = updates.tags;
+    if (updates.is_locked !== undefined) dbUpdates.is_locked = updates.is_locked;
+    if (updates.locked_by !== undefined) dbUpdates.locked_by = updates.locked_by;
 
     await supabase.from('notes').update(dbUpdates).eq('id', id);
   }, []);
