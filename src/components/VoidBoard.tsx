@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useMemo, useEffect } from 'react';
-import { Plus, Loader2, Link2, X } from 'lucide-react';
+import { Plus, Loader2, Link2, X, Eye, EyeOff } from 'lucide-react';
 import { StickyNote } from './StickyNote';
 import { Switch } from '@/components/ui/switch';
 import { useNotes, Note } from '@/hooks/useNotes';
@@ -7,6 +7,7 @@ import { useConnections } from '@/hooks/useConnections';
 import { ConnectionsOverlay } from './ConnectionsOverlay';
 import { SearchBar } from './SearchBar';
 import { NotePositionsProvider, useNotePositions } from '@/contexts/NotePositionsContext';
+import { WelcomeIntro } from './WelcomeIntro';
 
 const NOTE_WIDTH = 256;
 const NOTE_HEIGHT = 200;
@@ -74,6 +75,10 @@ function VoidBoardContent() {
   const [searchQuery, setSearchQuery] = useState('');
   const [connectingFrom, setConnectingFrom] = useState<string | null>(null);
   const [mousePosition, setMousePosition] = useState<{ x: number; y: number } | null>(null);
+  const [showLines, setShowLines] = useState(true);
+  const [showWelcome, setShowWelcome] = useState(() => {
+    return !localStorage.getItem('void-welcomed');
+  });
 
   // Track mouse position when connecting
   useEffect(() => {
@@ -218,14 +223,21 @@ function VoidBoardContent() {
     setConnectingFrom(null);
   }, []);
 
+  const handleDismissWelcome = useCallback(() => {
+    setShowWelcome(false);
+  }, []);
+
   return (
     <div className={`void-board relative ${isBoardMode ? 'mode-board' : ''}`}>
+      {/* Welcome Intro */}
+      <WelcomeIntro visible={showWelcome} onDismiss={handleDismissWelcome} />
+
       {/* SVG Connections Overlay */}
       <ConnectionsOverlay 
         notes={notes} 
         connections={connections}
         searchQuery={searchQuery} 
-        visible={true}
+        visible={showLines}
         connectingFrom={connectingFrom}
         mousePosition={mousePosition}
       />
@@ -278,6 +290,16 @@ function VoidBoardContent() {
           BOARD
         </span>
       </div>
+
+      {/* Lines toggle */}
+      <button
+        onClick={() => setShowLines(!showLines)}
+        className="fixed top-32 right-4 z-50 flex items-center gap-2 px-3 py-2 border border-foreground bg-background hover:bg-foreground hover:text-background transition-colors"
+        title={showLines ? 'Hide connection lines' : 'Show connection lines'}
+      >
+        {showLines ? <Eye size={14} /> : <EyeOff size={14} />}
+        <span className="text-xs uppercase tracking-widest font-mono">Lines</span>
+      </button>
 
       {/* Loading state */}
       {isLoading && (
