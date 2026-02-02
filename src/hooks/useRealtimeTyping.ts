@@ -35,6 +35,30 @@ const getSessionId = () => {
   return sessionId;
 };
 
+// Throttle helper
+function throttle<T extends (...args: unknown[]) => void>(fn: T, delay: number): T {
+  let lastCall = 0;
+  let timeoutId: ReturnType<typeof setTimeout> | null = null;
+  let lastArgs: unknown[] | null = null;
+
+  return ((...args: unknown[]) => {
+    const now = Date.now();
+    lastArgs = args;
+
+    if (now - lastCall >= delay) {
+      lastCall = now;
+      fn(...args);
+    } else if (!timeoutId) {
+      // Schedule trailing call
+      timeoutId = setTimeout(() => {
+        lastCall = Date.now();
+        timeoutId = null;
+        if (lastArgs) fn(...lastArgs);
+      }, delay - (now - lastCall));
+    }
+  }) as T;
+}
+
 export function useRealtimeTyping(voidId: string | null) {
   const sessionId = useRef(getSessionId());
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
@@ -81,7 +105,8 @@ export function useRealtimeTyping(voidId: string | null) {
     };
   }, [voidId]);
 
-  const broadcastTyping = useCallback((noteId: string, text: string, color: string | null) => {
+  // Raw broadcast functions (not throttled)
+  const sendTypingBroadcast = useCallback((noteId: string, text: string, color: string | null) => {
     if (!channelRef.current) return;
     
     channelRef.current.send({
@@ -96,7 +121,7 @@ export function useRealtimeTyping(voidId: string | null) {
     });
   }, []);
 
-  const broadcastPosition = useCallback((noteId: string, x: number, y: number) => {
+  const sendPositionBroadcast = useCallback((noteId: string, x: number, y: number) => {
     if (!channelRef.current) return;
     
     channelRef.current.send({
@@ -110,6 +135,10 @@ export function useRealtimeTyping(voidId: string | null) {
       } as PositionPayload,
     });
   }, []);
+
+  // Throttled broadcast functions (100ms)
+  const broadcastTyping = useRef(throttle(sendTypingBroadcast, 100)).current;
+  const broadcastPosition = useRef(throttle(sendPositionBroadcast, 100)).current;
 
   const clearRemoteNote = useCallback((noteId: string) => {
     setRemoteNotes(prev => {
