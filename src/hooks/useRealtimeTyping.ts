@@ -35,35 +35,17 @@ const getSessionId = () => {
   return sessionId;
 };
 
-// Throttle helper
-function throttle<T extends (...args: unknown[]) => void>(fn: T, delay: number): T {
-  let lastCall = 0;
-  let timeoutId: ReturnType<typeof setTimeout> | null = null;
-  let lastArgs: unknown[] | null = null;
-
-  return ((...args: unknown[]) => {
-    const now = Date.now();
-    lastArgs = args;
-
-    if (now - lastCall >= delay) {
-      lastCall = now;
-      fn(...args);
-    } else if (!timeoutId) {
-      // Schedule trailing call
-      timeoutId = setTimeout(() => {
-        lastCall = Date.now();
-        timeoutId = null;
-        if (lastArgs) fn(...lastArgs);
-      }, delay - (now - lastCall));
-    }
-  }) as T;
-}
+const THROTTLE_MS = 100;
 
 export function useRealtimeTyping(voidId: string | null) {
   const sessionId = useRef(getSessionId());
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const [remoteNotes, setRemoteNotes] = useState<Record<string, RemoteNote>>({});
   const [remotePositions, setRemotePositions] = useState<Record<string, RemotePosition>>({});
+  
+  // Throttle state refs
+  const lastTypingCall = useRef<Record<string, number>>({});
+  const lastPositionCall = useRef<Record<string, number>>({});
 
   useEffect(() => {
     const channelName = `typing-${voidId ?? 'public'}`;
@@ -105,9 +87,14 @@ export function useRealtimeTyping(voidId: string | null) {
     };
   }, [voidId]);
 
-  // Raw broadcast functions (not throttled)
-  const sendTypingBroadcast = useCallback((noteId: string, text: string, color: string | null) => {
+  const broadcastTyping = useCallback((noteId: string, text: string, color: string | null) => {
     if (!channelRef.current) return;
+    
+    const now = Date.now();
+    const lastCall = lastTypingCall.current[noteId] || 0;
+    
+    if (now - lastCall < THROTTLE_MS) return;
+    lastTypingCall.current[noteId] = now;
     
     channelRef.current.send({
       type: 'broadcast',
@@ -121,8 +108,14 @@ export function useRealtimeTyping(voidId: string | null) {
     });
   }, []);
 
-  const sendPositionBroadcast = useCallback((noteId: string, x: number, y: number) => {
+  const broadcastPosition = useCallback((noteId: string, x: number, y: number) => {
     if (!channelRef.current) return;
+    
+    const now = Date.now();
+    const lastCall = lastPositionCall.current[noteId] || 0;
+    
+    if (now - lastCall < THROTTLE_MS) return;
+    lastPositionCall.current[noteId] = now;
     
     channelRef.current.send({
       type: 'broadcast',
@@ -135,10 +128,6 @@ export function useRealtimeTyping(voidId: string | null) {
       } as PositionPayload,
     });
   }, []);
-
-  // Throttled broadcast functions (100ms)
-  const broadcastTyping = useRef(throttle(sendTypingBroadcast, 100)).current;
-  const broadcastPosition = useRef(throttle(sendPositionBroadcast, 100)).current;
 
   const clearRemoteNote = useCallback((noteId: string) => {
     setRemoteNotes(prev => {
