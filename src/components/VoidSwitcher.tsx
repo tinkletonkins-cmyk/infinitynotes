@@ -34,11 +34,11 @@ export function VoidSwitcher({
   const currentName = currentVoid?.name || 'Public Void';
 
   const copyInviteCode = (inviteCode: string) => {
-    const inviteUrl = `${window.location.origin}?join=${inviteCode}`;
-    navigator.clipboard.writeText(inviteUrl);
+    // Copy just the code for simple sharing
+    navigator.clipboard.writeText(inviteCode);
     toast({
-      title: 'Invite link copied!',
-      description: 'Share this link with others to invite them.',
+      title: 'Invite code copied!',
+      description: `Share "${inviteCode}" with others to invite them.`,
     });
   };
 
@@ -109,15 +109,22 @@ export function VoidSwitcher({
                         className="flex-1 flex items-center gap-3 text-left min-w-0"
                       >
                         <Lock size={16} />
-                        <span className="text-sm font-mono uppercase tracking-wider truncate">
-                          {void_.name}
-                        </span>
+                        <div className="flex-1 min-w-0">
+                          <span className="text-sm font-mono uppercase tracking-wider truncate block">
+                            {void_.name}
+                          </span>
+                          {void_.invite_code && (
+                            <span className="text-xs text-muted-foreground font-mono">
+                              Code: {void_.invite_code}
+                            </span>
+                          )}
+                        </div>
                       </button>
                       {void_.invite_code && (
                         <button
                           onClick={() => copyInviteCode(void_.invite_code!)}
-                          className="p-1.5 hover:bg-foreground/10 rounded"
-                          title="Copy invite link"
+                          className="p-1.5 hover:bg-foreground/10"
+                          title="Copy invite code"
                         >
                           <Copy size={14} />
                         </button>
@@ -125,7 +132,7 @@ export function VoidSwitcher({
                       {void_.owner_id === user.id && (
                         <button
                           onClick={() => onDeleteVoid(void_.id)}
-                          className="p-1.5 hover:bg-destructive/20 text-destructive rounded"
+                          className="p-1.5 hover:bg-destructive/20 text-destructive"
                           title="Delete void"
                         >
                           <Trash2 size={14} />

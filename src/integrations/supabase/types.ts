@@ -104,6 +104,7 @@ export type Database = {
           position_x: number
           position_y: number
           rotation: number
+          shape: string | null
           text: string
           void_id: string | null
         }
@@ -115,6 +116,7 @@ export type Database = {
           position_x?: number
           position_y?: number
           rotation?: number
+          shape?: string | null
           text?: string
           void_id?: string | null
         }
@@ -126,6 +128,7 @@ export type Database = {
           position_x?: number
           position_y?: number
           rotation?: number
+          shape?: string | null
           text?: string
           void_id?: string | null
         }

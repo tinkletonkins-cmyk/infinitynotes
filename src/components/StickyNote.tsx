@@ -6,6 +6,7 @@ import { getAIResponse, getAIChatResponse } from '@/utils/aiResponses';
 import { useNoteMessages } from '@/hooks/useNoteMessages';
 import { SmartText } from './SmartText';
 import { ColorPicker } from './ColorPicker';
+import { NoteShapePicker, NoteShape } from './NoteShapePicker';
 import { useNotePositions } from '@/contexts/NotePositionsContext';
 
 interface StickyNoteProps {
@@ -14,11 +15,12 @@ interface StickyNoteProps {
   initialPosition: { x: number; y: number };
   initialRotation: number;
   initialColor: string | null;
+  initialShape?: NoteShape;
   dimmed: boolean;
   isConnecting: boolean;
   isConnectionTarget: boolean;
   onDelete: (id: string) => void;
-  onUpdate: (id: string, updates: { text?: string; position?: { x: number; y: number }; color?: string | null }) => void;
+  onUpdate: (id: string, updates: { text?: string; position?: { x: number; y: number }; color?: string | null; shape?: NoteShape }) => void;
   onDrop: (id: string, position: { x: number; y: number }) => void;
   onStartConnection: (id: string) => void;
   onCompleteConnection: (id: string) => void;
@@ -38,6 +40,7 @@ export function StickyNote({
   initialPosition, 
   initialRotation,
   initialColor,
+  initialShape = 'square',
   dimmed,
   isConnecting,
   isConnectionTarget,
@@ -50,6 +53,7 @@ export function StickyNote({
 }: StickyNoteProps) {
   const [text, setText] = useState(initialText);
   const [color, setColor] = useState<string | null>(initialColor);
+  const [shape, setShape] = useState<NoteShape>(initialShape);
   const [showChat, setShowChat] = useState(false);
   const [chatInput, setChatInput] = useState('');
   const [isDragging, setIsDragging] = useState(false);
@@ -81,10 +85,14 @@ export function StickyNote({
     updatePosition(id, initialPosition);
   }, [initialPosition, x, y, id, updatePosition]);
 
-  // Sync color from props
+  // Sync color and shape from props
   useEffect(() => {
     setColor(initialColor);
   }, [initialColor]);
+
+  useEffect(() => {
+    setShape(initialShape);
+  }, [initialShape]);
 
   // Sync text changes to database (debounced)
   useEffect(() => {
@@ -169,6 +177,11 @@ export function StickyNote({
     onUpdate(id, { color: newColor });
   }, [id, onUpdate]);
 
+  const handleShapeChange = useCallback((newShape: NoteShape) => {
+    setShape(newShape);
+    onUpdate(id, { shape: newShape });
+  }, [id, onUpdate]);
+
   // Determine background style
   const backgroundStyle = color 
     ? { backgroundColor: color }
@@ -211,11 +224,11 @@ export function StickyNote({
         scale: { duration: 0.1 },
         boxShadow: { duration: 0.1 },
       }}
-      className={`absolute w-64 cursor-grab ${dimmed ? 'opacity-10 pointer-events-none' : ''} ${isConnectionTarget ? 'ring-2 ring-cyan-400 ring-offset-2 ring-offset-background cursor-pointer' : ''} ${isConnecting ? 'ring-2 ring-yellow-400' : ''}`}
+      className={`absolute w-64 cursor-grab note-shape-${shape} ${dimmed ? 'opacity-10 pointer-events-none' : ''} ${isConnectionTarget ? 'ring-2 ring-cyan-400 ring-offset-2 ring-offset-background cursor-pointer' : ''} ${isConnecting ? 'ring-2 ring-yellow-400' : ''}`}
     >
       <div
         style={backgroundStyle}
-        className={`relative w-full ${!color ? emotionClass : ''} border border-foreground`}
+        className={`relative w-full h-full ${!color ? emotionClass : ''} border border-foreground ${shape === 'circle' ? 'aspect-square flex flex-col' : ''}`}
       >
         {/* Header with drag handle */}
         <div className="flex items-center justify-between p-2 border-b border-current">
@@ -231,6 +244,7 @@ export function StickyNote({
               <Link2 size={16} />
             </button>
             <ColorPicker currentColor={color} onColorSelect={handleColorChange} />
+            <NoteShapePicker currentShape={shape} onShapeSelect={handleShapeChange} />
             <button
               onClick={handleToggleChat}
               className={`p-1 hover:opacity-70 transition-opacity ${showChat ? 'opacity-100' : 'opacity-70'}`}
@@ -253,7 +267,7 @@ export function StickyNote({
           value={text}
           onChange={(e) => setText(e.target.value)}
           placeholder="type your thoughts..."
-          className="w-full h-32 p-3 bg-transparent resize-none focus:outline-none placeholder:opacity-50 font-mono text-sm"
+          className="w-full h-32 p-3 bg-transparent resize-none focus:outline-none placeholder:opacity-50 font-handwriting text-xl leading-relaxed"
           style={{ color: 'inherit' }}
         />
 

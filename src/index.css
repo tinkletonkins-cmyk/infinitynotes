@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Space+Mono:wght@400;700&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Space+Mono:wght@400;700&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Caveat:wght@400;500;600;700&family=Kalam:wght@300;400;700&family=Patrick+Hand&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -157,6 +157,102 @@
       linear-gradient(135deg, hsl(30 40% 55%) 0%, hsl(25 35% 50%) 50%, hsl(30 40% 55%) 100%);
     background-size: 80px 80px, 100% 100%;
     cursor: grab;
+  }
+  
+  /* Board themes */
+  .void-board.theme-wavy {
+    background: 
+      repeating-linear-gradient(
+        45deg,
+        hsl(240 30% 8%) 0px,
+        hsl(240 30% 8%) 2px,
+        hsl(240 30% 12%) 2px,
+        hsl(240 30% 12%) 20px
+      ),
+      linear-gradient(180deg, hsl(240 30% 6%) 0%, hsl(260 25% 10%) 50%, hsl(240 30% 6%) 100%);
+    animation: wave-shift 20s ease-in-out infinite;
+  }
+  
+  .void-board.theme-galaxy {
+    background: 
+      radial-gradient(ellipse at 20% 30%, hsl(280 60% 20% / 0.4) 0%, transparent 50%),
+      radial-gradient(ellipse at 80% 70%, hsl(200 60% 20% / 0.4) 0%, transparent 50%),
+      radial-gradient(ellipse at 50% 50%, hsl(320 50% 15% / 0.3) 0%, transparent 70%),
+      radial-gradient(circle at 1px 1px, hsl(0 0% 30%) 1px, transparent 0);
+    background-size: 100% 100%, 100% 100%, 100% 100%, 60px 60px;
+    background-color: hsl(240 30% 5%);
+  }
+  
+  .void-board.theme-blueprint {
+    background: 
+      linear-gradient(hsl(210 80% 30% / 0.3) 1px, transparent 1px),
+      linear-gradient(90deg, hsl(210 80% 30% / 0.3) 1px, transparent 1px),
+      linear-gradient(hsl(210 80% 40% / 0.15) 1px, transparent 1px),
+      linear-gradient(90deg, hsl(210 80% 40% / 0.15) 1px, transparent 1px);
+    background-size: 100px 100px, 100px 100px, 20px 20px, 20px 20px;
+    background-color: hsl(210 70% 15%);
+  }
+  
+  .void-board.theme-paper {
+    background: 
+      linear-gradient(hsl(0 0% 70% / 0.3) 1px, transparent 1px);
+    background-size: 100% 28px;
+    background-color: hsl(45 30% 92%);
+    --foreground: 0 0% 20%;
+  }
+  
+  .void-board.theme-sunset {
+    background: 
+      radial-gradient(circle at 1px 1px, hsl(30 80% 40% / 0.3) 1px, transparent 0),
+      linear-gradient(180deg, hsl(35 70% 25%) 0%, hsl(15 80% 35%) 40%, hsl(340 60% 25%) 70%, hsl(280 40% 15%) 100%);
+    background-size: 40px 40px, 100% 100%;
+  }
+  
+  @keyframes wave-shift {
+    0%, 100% { background-position: 0 0, 0 0; }
+    50% { background-position: 20px 10px, 0 0; }
+  }
+  
+  /* Handwriting fonts */
+  .font-handwriting {
+    font-family: 'Caveat', cursive;
+  }
+  
+  .font-handwriting-alt {
+    font-family: 'Kalam', cursive;
+  }
+  
+  .font-handwriting-casual {
+    font-family: 'Patrick Hand', cursive;
+  }
+  
+  /* Note shape masks */
+  .note-shape-square {
+    clip-path: none;
+  }
+  
+  .note-shape-circle {
+    clip-path: ellipse(50% 50% at 50% 50%);
+  }
+  
+  .note-shape-hexagon {
+    clip-path: polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%);
+  }
+  
+  .note-shape-torn {
+    clip-path: polygon(
+      0% 0%, 8% 3%, 15% 0%, 22% 2%, 30% 0%, 38% 3%, 45% 0%, 52% 2%, 60% 0%, 68% 3%, 75% 0%, 82% 2%, 90% 0%, 100% 3%,
+      100% 0%, 100% 100%,
+      100% 100%, 92% 97%, 85% 100%, 78% 98%, 70% 100%, 62% 97%, 55% 100%, 48% 98%, 40% 100%, 32% 97%, 25% 100%, 18% 98%, 10% 100%, 0% 97%,
+      0% 100%, 0% 0%
+    );
+  }
+  
+  .note-shape-cloud {
+    clip-path: polygon(
+      10% 60%, 5% 50%, 10% 35%, 20% 25%, 35% 20%, 50% 15%, 65% 20%, 80% 25%, 90% 35%, 95% 50%, 90% 60%,
+      90% 75%, 80% 85%, 65% 90%, 50% 95%, 35% 90%, 20% 85%, 10% 75%
+    );
   }
   
   .void-board:active {

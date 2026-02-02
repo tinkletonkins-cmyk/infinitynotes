@@ -21,6 +21,7 @@ import { ConstellationMode } from './ConstellationMode';
 import { MoodWeather } from './MoodWeather';
 import { VoidSummaryModal } from './VoidSummaryModal';
 import { ConnectionSuggestions } from './ConnectionSuggestions';
+import { BoardThemePicker, BoardTheme } from './BoardThemePicker';
 
 const NOTE_WIDTH = 256;
 const NOTE_HEIGHT = 200;
@@ -102,6 +103,7 @@ function VoidBoardContent() {
   } = useVoidAI();
   
   const [isBoardMode, setIsBoardMode] = useState(false);
+  const [boardTheme, setBoardTheme] = useState<BoardTheme>('void');
   const [searchQuery, setSearchQuery] = useState('');
   const [connectingFrom, setConnectingFrom] = useState<string | null>(null);
   const [mousePosition, setMousePosition] = useState<{ x: number; y: number } | null>(null);
@@ -352,8 +354,11 @@ function VoidBoardContent() {
 
   const currentVoid = currentVoidId ? voids.find(v => v.id === currentVoidId) : null;
 
+  // Build board theme class
+  const boardThemeClass = isBoardMode ? 'mode-board' : boardTheme !== 'void' ? `theme-${boardTheme}` : '';
+
   return (
-    <div className={`void-board relative ${isBoardMode ? 'mode-board' : ''}`}>
+    <div className={`void-board relative ${boardThemeClass}`}>
       {/* Modals */}
       <WelcomeIntro visible={showWelcome} onDismiss={handleDismissWelcome} />
       <AuthModal 
@@ -462,7 +467,7 @@ function VoidBoardContent() {
         </div>
       )}
 
-      {/* Mode toggle */}
+      {/* Mode toggle and theme picker */}
       <div className="mode-toggle">
         <span className={`mode-toggle-label ${!isBoardMode ? 'opacity-100' : 'opacity-50'}`}>
           VOID
@@ -477,10 +482,15 @@ function VoidBoardContent() {
         </span>
       </div>
 
+      {/* Board Theme Picker */}
+      <div className="fixed top-32 right-4 z-50">
+        <BoardThemePicker currentTheme={boardTheme} onThemeSelect={setBoardTheme} />
+      </div>
+
       {/* Constellation mode toggle */}
       <button
         onClick={() => setShowConstellation(!showConstellation)}
-        className={`fixed top-32 right-4 z-50 flex items-center gap-2 px-3 py-2 border border-foreground transition-colors ${showConstellation ? 'bg-foreground text-background' : 'bg-background hover:bg-foreground hover:text-background'}`}
+        className={`fixed top-44 right-4 z-50 flex items-center gap-2 px-3 py-2 border border-foreground transition-colors ${showConstellation ? 'bg-foreground text-background' : 'bg-background hover:bg-foreground hover:text-background'}`}
         title={showConstellation ? 'Exit stargazing mode' : 'Enter stargazing mode'}
       >
         <Sparkles size={14} />
@@ -491,7 +501,7 @@ function VoidBoardContent() {
       <button
         onClick={handleGenerateSummary}
         disabled={isLoadingSummary || notes.length === 0}
-        className="fixed top-44 right-4 z-50 flex items-center gap-2 px-3 py-2 border border-foreground bg-background hover:bg-foreground hover:text-background transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        className="fixed top-56 right-4 z-50 flex items-center gap-2 px-3 py-2 border border-foreground bg-background hover:bg-foreground hover:text-background transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         title="Generate poetic void summary"
       >
         <BookOpen size={14} />
@@ -502,7 +512,7 @@ function VoidBoardContent() {
       <button
         onClick={handleSuggestConnections}
         disabled={isLoadingConnections || notes.length < 2}
-        className="fixed top-56 right-4 z-50 flex items-center gap-2 px-3 py-2 border border-foreground bg-background hover:bg-foreground hover:text-background transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        className="fixed top-68 right-4 z-50 flex items-center gap-2 px-3 py-2 border border-foreground bg-background hover:bg-foreground hover:text-background transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         title="AI suggests note connections"
       >
         <Zap size={14} />
@@ -531,6 +541,7 @@ function VoidBoardContent() {
               initialPosition={note.position}
               initialRotation={note.rotation}
               initialColor={note.color}
+              initialShape={note.shape}
               dimmed={searchQuery.trim() !== '' && !isMatch}
               isConnecting={isConnecting}
               isConnectionTarget={isConnectionTarget}

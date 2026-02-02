@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { NoteShape } from '@/components/NoteShapePicker';
 
 export interface Note {
   id: string;
@@ -8,6 +9,7 @@ export interface Note {
   rotation: number;
   parent_id: string | null;
   color: string | null;
+  shape: NoteShape;
   void_id: string | null;
 }
 
@@ -58,6 +60,7 @@ export function useNotes(voidId: string | null = null) {
           rotation: n.rotation,
           parent_id: n.parent_id,
           color: n.color ?? null,
+          shape: (n.shape as NoteShape) ?? 'square',
           void_id: n.void_id ?? null,
         })));
       }
@@ -91,6 +94,7 @@ export function useNotes(voidId: string | null = null) {
                 rotation: n.rotation,
                 parent_id: n.parent_id,
                 color: n.color ?? null,
+                shape: (n.shape as NoteShape) ?? 'square',
                 void_id: n.void_id ?? null,
               }];
             });
@@ -98,7 +102,7 @@ export function useNotes(voidId: string | null = null) {
             if (noteVoidId !== voidId) return;
             setNotes(prev => prev.map(note => 
               note.id === n.id 
-                ? { ...note, text: n.text, position: { x: n.position_x, y: n.position_y }, color: n.color ?? null, parent_id: n.parent_id }
+                ? { ...note, text: n.text, position: { x: n.position_x, y: n.position_y }, color: n.color ?? null, shape: (n.shape as NoteShape) ?? 'square', parent_id: n.parent_id }
                 : note
             ));
           } else if (payload.eventType === 'DELETE') {
@@ -130,6 +134,7 @@ export function useNotes(voidId: string | null = null) {
       rotation,
       parent_id: parentId || null,
       color: null,
+      shape: 'square',
       void_id: voidId,
     };
     setNotes(prev => [...prev, newNote]);
@@ -149,7 +154,7 @@ export function useNotes(voidId: string | null = null) {
     return id;
   }, [voidId]);
 
-  const updateNote = useCallback(async (id: string, updates: Partial<Pick<Note, 'text' | 'position' | 'color' | 'parent_id'>>) => {
+  const updateNote = useCallback(async (id: string, updates: Partial<Pick<Note, 'text' | 'position' | 'color' | 'parent_id' | 'shape'>>) => {
     // Optimistic update
     setNotes(prev => prev.map(note => 
       note.id === id ? { ...note, ...updates } : note
@@ -164,6 +169,7 @@ export function useNotes(voidId: string | null = null) {
     }
     if (updates.color !== undefined) dbUpdates.color = updates.color;
     if (updates.parent_id !== undefined) dbUpdates.parent_id = updates.parent_id;
+    if (updates.shape !== undefined) dbUpdates.shape = updates.shape;
     
     await supabase.from('notes').update(dbUpdates).eq('id', id);
   }, []);

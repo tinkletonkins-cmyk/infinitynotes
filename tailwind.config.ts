@@ -15,6 +15,9 @@ export default {
     extend: {
       fontFamily: {
         mono: ["JetBrains Mono", "Space Mono", "monospace"],
+        handwriting: ["Caveat", "cursive"],
+        "handwriting-alt": ["Kalam", "cursive"],
+        "handwriting-casual": ["Patrick Hand", "cursive"],
       },
       colors: {
         border: "hsl(var(--border))",
