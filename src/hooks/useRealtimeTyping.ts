@@ -4,7 +4,13 @@ import { supabase } from '@/integrations/supabase/client';
 interface TypingPayload {
   noteId: string;
   text: string;
+  color: string | null;
   userId: string;
+}
+
+interface RemoteNote {
+  text: string;
+  color: string | null;
 }
 
 // Generate a unique session ID for this browser tab
@@ -20,7 +26,7 @@ const getSessionId = () => {
 export function useRealtimeTyping(voidId: string | null) {
   const sessionId = useRef(getSessionId());
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
-  const [remoteTexts, setRemoteTexts] = useState<Record<string, string>>({});
+  const [remoteNotes, setRemoteNotes] = useState<Record<string, RemoteNote>>({});
 
   useEffect(() => {
     const channelName = `typing-${voidId ?? 'public'}`;
@@ -37,9 +43,9 @@ export function useRealtimeTyping(voidId: string | null) {
         // Ignore our own broadcasts
         if (data.userId === sessionId.current) return;
         
-        setRemoteTexts(prev => ({
+        setRemoteNotes(prev => ({
           ...prev,
-          [data.noteId]: data.text,
+          [data.noteId]: { text: data.text, color: data.color },
         }));
       })
       .subscribe();
@@ -52,7 +58,7 @@ export function useRealtimeTyping(voidId: string | null) {
     };
   }, [voidId]);
 
-  const broadcastTyping = useCallback((noteId: string, text: string) => {
+  const broadcastTyping = useCallback((noteId: string, text: string, color: string | null) => {
     if (!channelRef.current) return;
     
     channelRef.current.send({
@@ -61,13 +67,14 @@ export function useRealtimeTyping(voidId: string | null) {
       payload: {
         noteId,
         text,
+        color,
         userId: sessionId.current,
       } as TypingPayload,
     });
   }, []);
 
-  const clearRemoteText = useCallback((noteId: string) => {
-    setRemoteTexts(prev => {
+  const clearRemoteNote = useCallback((noteId: string) => {
+    setRemoteNotes(prev => {
       const next = { ...prev };
       delete next[noteId];
       return next;
@@ -75,9 +82,9 @@ export function useRealtimeTyping(voidId: string | null) {
   }, []);
 
   return {
-    remoteTexts,
+    remoteNotes,
     broadcastTyping,
-    clearRemoteText,
+    clearRemoteNote,
     sessionId: sessionId.current,
   };
 }

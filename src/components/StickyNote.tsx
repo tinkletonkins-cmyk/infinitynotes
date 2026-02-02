@@ -34,7 +34,8 @@ interface StickyNoteProps {
   onCompleteConnection: (id: string) => void;
   onDragStateChange?: (id: string, isDragging: boolean, x: number, y: number) => void;
   remoteText?: string;
-  onTyping?: (text: string) => void;
+  remoteColor?: string | null;
+  onTyping?: (text: string, color: string | null) => void;
   onTypingComplete?: () => void;
 }
 
@@ -66,6 +67,7 @@ export function StickyNote({
   onCompleteConnection,
   onDragStateChange,
   remoteText,
+  remoteColor,
   onTyping,
   onTypingComplete,
 }: StickyNoteProps) {
@@ -249,9 +251,10 @@ export function StickyNote({
     setShowHistory(false);
   }, [id, onUpdate]);
 
-  // Determine background style
-  const backgroundStyle = color 
-    ? { backgroundColor: color }
+  // Determine background style - use remoteColor when receiving remote typing
+  const displayColor = isLocallyEditing ? color : (remoteColor !== undefined ? remoteColor : color);
+  const backgroundStyle = displayColor 
+    ? { backgroundColor: displayColor }
     : undefined;
 
   const handleNoteClick = useCallback((e: React.MouseEvent) => {
@@ -295,7 +298,7 @@ export function StickyNote({
     >
       <div
         style={backgroundStyle}
-        className={`relative w-full h-full ${!color ? emotionClass : ''} border border-foreground ${shape === 'circle' ? 'aspect-square flex flex-col' : ''}`}
+        className={`relative w-full h-full ${!displayColor ? emotionClass : ''} border border-foreground ${shape === 'circle' ? 'aspect-square flex flex-col' : ''}`}
       >
         {/* Header with drag handle */}
         <div className="flex items-center justify-between p-2 border-b border-current">
@@ -342,7 +345,7 @@ export function StickyNote({
           onChange={(e) => {
             setIsLocallyEditing(true);
             setText(e.target.value);
-            onTyping?.(e.target.value);
+            onTyping?.(e.target.value, color);
           }}
           onFocus={() => setIsLocallyEditing(true)}
           onBlur={() => {
@@ -381,7 +384,7 @@ export function StickyNote({
 
         {/* Emotion indicator */}
         <div className="px-3 pb-2 text-xs uppercase tracking-widest opacity-70 font-mono">
-          {color ? 'custom' : emotion}
+          {displayColor ? 'custom' : emotion}
         </div>
 
         {/* Inline Chat (multiplayer + AI) */}

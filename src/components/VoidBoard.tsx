@@ -95,7 +95,7 @@ function VoidBoardContent() {
   const noteIds = useMemo(() => notes.map(n => n.id), [notes]);
   const { addReaction, getReactionCounts, hasUserReacted } = useReactions(noteIds);
   const { getPosition } = useNotePositions();
-  const { remoteTexts, broadcastTyping, clearRemoteText, sessionId } = useRealtimeTyping(currentVoidId);
+  const { remoteNotes, broadcastTyping, clearRemoteNote, sessionId } = useRealtimeTyping(currentVoidId);
   
   // AI features
   const {
@@ -625,9 +625,10 @@ function VoidBoardContent() {
               onStartConnection={handleStartConnection}
               onCompleteConnection={handleCompleteConnection}
               onDragStateChange={handleDragStateChange}
-              remoteText={remoteTexts[note.id]}
-              onTyping={(text) => broadcastTyping(note.id, text)}
-              onTypingComplete={() => clearRemoteText(note.id)}
+              remoteText={remoteNotes[note.id]?.text}
+              remoteColor={remoteNotes[note.id]?.color}
+              onTyping={(text, color) => broadcastTyping(note.id, text, color)}
+              onTypingComplete={() => clearRemoteNote(note.id)}
             />
           );
         })}
