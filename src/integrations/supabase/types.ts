@@ -14,6 +14,41 @@ export type Database = {
   }
   public: {
     Tables: {
+      board_drawings: {
+        Row: {
+          color: string
+          created_at: string
+          id: string
+          path_data: string
+          stroke_width: number
+          void_id: string | null
+        }
+        Insert: {
+          color?: string
+          created_at?: string
+          id?: string
+          path_data: string
+          stroke_width?: number
+          void_id?: string | null
+        }
+        Update: {
+          color?: string
+          created_at?: string
+          id?: string
+          path_data?: string
+          stroke_width?: number
+          void_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "board_drawings_void_id_fkey"
+            columns: ["void_id"]
+            isOneToOne: false
+            referencedRelation: "voids"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       note_connections: {
         Row: {
           created_at: string
@@ -60,6 +95,41 @@ export type Database = {
           },
         ]
       }
+      note_history: {
+        Row: {
+          changed_at: string
+          color: string | null
+          id: string
+          note_id: string
+          shape: string | null
+          text: string
+        }
+        Insert: {
+          changed_at?: string
+          color?: string | null
+          id?: string
+          note_id: string
+          shape?: string | null
+          text: string
+        }
+        Update: {
+          changed_at?: string
+          color?: string | null
+          id?: string
+          note_id?: string
+          shape?: string | null
+          text?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "note_history_note_id_fkey"
+            columns: ["note_id"]
+            isOneToOne: false
+            referencedRelation: "notes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       note_messages: {
         Row: {
           content: string
@@ -95,6 +165,38 @@ export type Database = {
           },
         ]
       }
+      note_reactions: {
+        Row: {
+          created_at: string
+          emoji: string
+          id: string
+          note_id: string
+          session_id: string
+        }
+        Insert: {
+          created_at?: string
+          emoji: string
+          id?: string
+          note_id: string
+          session_id: string
+        }
+        Update: {
+          created_at?: string
+          emoji?: string
+          id?: string
+          note_id?: string
+          session_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "note_reactions_note_id_fkey"
+            columns: ["note_id"]
+            isOneToOne: false
+            referencedRelation: "notes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notes: {
         Row: {
           color: string | null
@@ -105,6 +207,7 @@ export type Database = {
           position_y: number
           rotation: number
           shape: string | null
+          tags: string[] | null
           text: string
           void_id: string | null
         }
@@ -117,6 +220,7 @@ export type Database = {
           position_y?: number
           rotation?: number
           shape?: string | null
+          tags?: string[] | null
           text?: string
           void_id?: string | null
         }
@@ -129,6 +233,7 @@ export type Database = {
           position_y?: number
           rotation?: number
           shape?: string | null
+          tags?: string[] | null
           text?: string
           void_id?: string | null
         }

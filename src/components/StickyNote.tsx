@@ -1,12 +1,16 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { motion, useMotionValue, useSpring } from 'framer-motion';
-import { MessageCircle, X, GripVertical, Send, Link2 } from 'lucide-react';
+import { MessageCircle, X, GripVertical, Send, Link2, Clock } from 'lucide-react';
 import { useSentiment, getEmotionClass, EmotionType } from '@/hooks/useSentiment';
 import { getAIResponse, getAIChatResponse } from '@/utils/aiResponses';
 import { useNoteMessages } from '@/hooks/useNoteMessages';
+import { useNoteHistory, HistoryEntry } from '@/hooks/useNoteHistory';
 import { SmartText } from './SmartText';
 import { ColorPicker } from './ColorPicker';
 import { NoteShapePicker, NoteShape } from './NoteShapePicker';
+import { NoteReactions } from './NoteReactions';
+import { NoteTags } from './NoteTags';
+import { NoteHistoryModal } from './NoteHistoryModal';
 import { useNotePositions } from '@/contexts/NotePositionsContext';
 
 interface StickyNoteProps {
@@ -16,11 +20,15 @@ interface StickyNoteProps {
   initialRotation: number;
   initialColor: string | null;
   initialShape?: NoteShape;
+  initialTags?: string[];
   dimmed: boolean;
   isConnecting: boolean;
   isConnectionTarget: boolean;
+  reactionCounts: Record<string, number>;
+  hasUserReacted: (emoji: string) => boolean;
+  onReact: (emoji: string) => void;
   onDelete: (id: string) => void;
-  onUpdate: (id: string, updates: { text?: string; position?: { x: number; y: number }; color?: string | null; shape?: NoteShape }) => void;
+  onUpdate: (id: string, updates: { text?: string; position?: { x: number; y: number }; color?: string | null; shape?: NoteShape; tags?: string[] }) => void;
   onDrop: (id: string, position: { x: number; y: number }) => void;
   onStartConnection: (id: string) => void;
   onCompleteConnection: (id: string) => void;
@@ -41,9 +49,13 @@ export function StickyNote({
   initialRotation,
   initialColor,
   initialShape = 'square',
+  initialTags = [],
   dimmed,
   isConnecting,
   isConnectionTarget,
+  reactionCounts,
+  hasUserReacted,
+  onReact,
   onDelete, 
   onUpdate,
   onDrop,
@@ -54,9 +66,12 @@ export function StickyNote({
   const [text, setText] = useState(initialText);
   const [color, setColor] = useState<string | null>(initialColor);
   const [shape, setShape] = useState<NoteShape>(initialShape);
+  const [tags, setTags] = useState<string[]>(initialTags);
   const [showChat, setShowChat] = useState(false);
   const [chatInput, setChatInput] = useState('');
   const [isDragging, setIsDragging] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
+  const [lastSavedText, setLastSavedText] = useState(initialText);
   
   const chatInputRef = useRef<HTMLInputElement>(null);
   const chatScrollRef = useRef<HTMLDivElement>(null);
@@ -73,6 +88,7 @@ export function StickyNote({
   const springY = useSpring(y, springConfig);
 
   const { messages, username, sendMessage } = useNoteMessages(id);
+  const { history, isLoading: isLoadingHistory, addHistoryEntry } = useNoteHistory(showHistory ? id : null);
   const emotion: EmotionType = useSentiment(text);
   const emotionClass = getEmotionClass(emotion);
 
@@ -94,15 +110,25 @@ export function StickyNote({
     setShape(initialShape);
   }, [initialShape]);
 
-  // Sync text changes to database (debounced)
+  // Sync tags from props
   useEffect(() => {
-    const timeout = setTimeout(() => {
+    setTags(initialTags);
+  }, [initialTags.join(',')]);
+
+  // Sync text changes to database (debounced) and save history
+  useEffect(() => {
+    const timeout = setTimeout(async () => {
       if (text !== initialText) {
+        // Save history entry if text changed significantly
+        if (lastSavedText && text !== lastSavedText && lastSavedText.length > 0) {
+          await addHistoryEntry(id, lastSavedText, color, shape);
+        }
+        setLastSavedText(text);
         onUpdate(id, { text });
       }
     }, 500);
     return () => clearTimeout(timeout);
-  }, [text, id, initialText, onUpdate]);
+  }, [text, id, initialText, onUpdate, lastSavedText, addHistoryEntry, color, shape]);
 
   // Auto-scroll chat
   useEffect(() => {
@@ -182,6 +208,30 @@ export function StickyNote({
     onUpdate(id, { shape: newShape });
   }, [id, onUpdate]);
 
+  const handleAddTag = useCallback((tag: string) => {
+    const newTags = [...tags, tag];
+    setTags(newTags);
+    onUpdate(id, { tags: newTags });
+  }, [id, tags, onUpdate]);
+
+  const handleRemoveTag = useCallback((tag: string) => {
+    const newTags = tags.filter(t => t !== tag);
+    setTags(newTags);
+    onUpdate(id, { tags: newTags });
+  }, [id, tags, onUpdate]);
+
+  const handleRestoreHistory = useCallback((entry: HistoryEntry) => {
+    setText(entry.text);
+    if (entry.color) setColor(entry.color);
+    if (entry.shape) setShape(entry.shape as NoteShape);
+    onUpdate(id, { 
+      text: entry.text, 
+      color: entry.color, 
+      shape: entry.shape as NoteShape 
+    });
+    setShowHistory(false);
+  }, [id, onUpdate]);
+
   // Determine background style
   const backgroundStyle = color 
     ? { backgroundColor: color }
@@ -243,6 +293,13 @@ export function StickyNote({
             >
               <Link2 size={16} />
             </button>
+            <button
+              onClick={(e) => { e.stopPropagation(); setShowHistory(true); }}
+              className="p-1 hover:opacity-70 transition-opacity opacity-70"
+              title="View history"
+            >
+              <Clock size={16} />
+            </button>
             <ColorPicker currentColor={color} onColorSelect={handleColorChange} />
             <NoteShapePicker currentShape={shape} onShapeSelect={handleShapeChange} />
             <button
@@ -270,6 +327,25 @@ export function StickyNote({
           className="w-full h-32 p-3 bg-transparent resize-none focus:outline-none placeholder:opacity-50 font-handwriting"
           style={{ color: 'inherit', fontFamily: "'Caveat', cursive", fontSize: '1.25rem' }}
         />
+
+        {/* Tags */}
+        <div className="px-3 pb-1">
+          <NoteTags 
+            tags={tags} 
+            onAddTag={handleAddTag} 
+            onRemoveTag={handleRemoveTag} 
+          />
+        </div>
+
+        {/* Reactions */}
+        <div className="px-3 pb-1">
+          <NoteReactions
+            noteId={id}
+            reactionCounts={reactionCounts}
+            hasUserReacted={(emoji) => hasUserReacted(emoji)}
+            onReact={(emoji) => onReact(emoji)}
+          />
+        </div>
 
         {/* Emotion indicator */}
         <div className="px-3 pb-2 text-xs uppercase tracking-widest opacity-70 font-mono">
@@ -313,6 +389,16 @@ export function StickyNote({
             </div>
           </div>
         )}
+
+        {/* History Modal */}
+        <NoteHistoryModal
+          isOpen={showHistory}
+          onClose={() => setShowHistory(false)}
+          history={history}
+          isLoading={isLoadingHistory}
+          currentText={text}
+          onRestore={handleRestoreHistory}
+        />
       </div>
     </motion.div>
   );

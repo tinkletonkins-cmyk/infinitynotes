@@ -1,13 +1,16 @@
 import React, { useState, useCallback, useMemo, useEffect } from 'react';
-import { Plus, Loader2, Link2, X, Sparkles, BookOpen, Zap } from 'lucide-react';
+import { Plus, Loader2, Link2, X, Sparkles, BookOpen, Zap, Pencil } from 'lucide-react';
 import { StickyNote } from './StickyNote';
 import { Switch } from '@/components/ui/switch';
 import { useNotes, Note } from '@/hooks/useNotes';
 import { useConnections } from '@/hooks/useConnections';
+import { useReactions } from '@/hooks/useReactions';
 import { useAuth } from '@/hooks/useAuth';
 import { useVoids } from '@/hooks/useVoids';
 import { useVoidAI } from '@/hooks/useVoidAI';
 import { SearchBar } from './SearchBar';
+import { TagsFilter } from './TagsFilter';
+import { DrawingCanvas } from './DrawingCanvas';
 import { NotePositionsProvider, useNotePositions } from '@/contexts/NotePositionsContext';
 import { WelcomeIntro } from './WelcomeIntro';
 import { VoidSwitcher } from './VoidSwitcher';
@@ -88,6 +91,8 @@ function VoidBoardContent() {
   const [currentVoidId, setCurrentVoidId] = useState<string | null>(null);
   const { notes, isLoading, addNote, updateNote, deleteNote } = useNotes(currentVoidId);
   const { connections, addConnection, removeConnectionsForNote } = useConnections(currentVoidId);
+  const noteIds = useMemo(() => notes.map(n => n.id), [notes]);
+  const { addReaction, getReactionCounts, hasUserReacted } = useReactions(noteIds);
   const { getPosition } = useNotePositions();
   
   // AI features
@@ -111,7 +116,9 @@ function VoidBoardContent() {
   const [dragStates, setDragStates] = useState<Record<string, { isDragging: boolean; x: number; y: number }>>({});
   const [showSummaryModal, setShowSummaryModal] = useState(false);
   const [showSuggestionsModal, setShowSuggestionsModal] = useState(false);
-  
+  const [drawingMode, setDrawingMode] = useState(false);
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
+
   // Show welcome intro for non-signed-in users
   useEffect(() => {
     setShowWelcome(!user);
@@ -197,10 +204,36 @@ function VoidBoardContent() {
     };
   }, [connectingFrom]);
 
-  const filteredNotes = useMemo(() => {
-    return notes.filter(note => noteMatchesSearch(note, searchQuery));
-  }, [notes, searchQuery]);
+  // Get all unique tags from notes
+  const availableTags = useMemo(() => {
+    const tagSet = new Set<string>();
+    notes.forEach(note => {
+      (note.tags || []).forEach(tag => tagSet.add(tag));
+    });
+    return Array.from(tagSet).sort();
+  }, [notes]);
 
+  // Filter notes by search and tags
+  const filteredNotes = useMemo(() => {
+    return notes.filter(note => {
+      const matchesSearch = noteMatchesSearch(note, searchQuery);
+      const matchesTags = selectedTags.length === 0 || 
+        selectedTags.some(tag => (note.tags || []).includes(tag));
+      return matchesSearch && matchesTags;
+    });
+  }, [notes, searchQuery, selectedTags]);
+
+  const handleTagToggle = useCallback((tag: string) => {
+    setSelectedTags(prev => 
+      prev.includes(tag) 
+        ? prev.filter(t => t !== tag)
+        : [...prev, tag]
+    );
+  }, []);
+
+  const handleClearTags = useCallback(() => {
+    setSelectedTags([]);
+  }, []);
   const handleAddNote = useCallback(() => {
     addNote();
   }, [addNote]);
@@ -214,10 +247,14 @@ function VoidBoardContent() {
 
   const handleUpdateNote = useCallback((
     id: string, 
-    updates: { text?: string; position?: { x: number; y: number }; color?: string | null }
+    updates: { text?: string; position?: { x: number; y: number }; color?: string | null; tags?: string[] }
   ) => {
     updateNote(id, updates);
   }, [updateNote]);
+
+  const handleReact = useCallback((noteId: string, emoji: string) => {
+    addReaction(noteId, emoji);
+  }, [addReaction]);
 
   const handleDeleteNote = useCallback((id: string) => {
     removeConnectionsForNote(id);
@@ -399,6 +436,13 @@ function VoidBoardContent() {
         onAccept={handleAcceptSuggestion}
       />
 
+      {/* Drawing Canvas */}
+      <DrawingCanvas 
+        isActive={drawingMode} 
+        onClose={() => setDrawingMode(false)} 
+        voidId={currentVoidId}
+      />
+
       {/* Mood Weather Background */}
       <MoodWeather notes={notes} />
 
@@ -454,6 +498,12 @@ function VoidBoardContent() {
           resultCount={filteredNotes.length}
           totalCount={notes.length}
         />
+        <TagsFilter
+          availableTags={availableTags}
+          selectedTags={selectedTags}
+          onTagToggle={handleTagToggle}
+          onClearAll={handleClearTags}
+        />
       </div>
 
       {/* Connection Mode Indicator */}
@@ -493,10 +543,20 @@ function VoidBoardContent() {
         <BoardThemePicker currentTheme={boardTheme} onThemeSelect={setBoardTheme} />
       </div>
 
+      {/* Drawing mode toggle */}
+      <button
+        onClick={() => setDrawingMode(!drawingMode)}
+        className={`fixed top-44 right-4 z-50 flex items-center gap-2 px-3 py-2 border border-foreground transition-colors ${drawingMode ? 'bg-foreground text-background' : 'bg-background hover:bg-foreground hover:text-background'}`}
+        title={drawingMode ? 'Exit drawing mode' : 'Enter drawing mode'}
+      >
+        <Pencil size={14} />
+        <span className="text-xs uppercase tracking-widest font-mono">Draw</span>
+      </button>
+
       {/* Constellation mode toggle */}
       <button
         onClick={() => setShowConstellation(!showConstellation)}
-        className={`fixed top-44 right-4 z-50 flex items-center gap-2 px-3 py-2 border border-foreground transition-colors ${showConstellation ? 'bg-foreground text-background' : 'bg-background hover:bg-foreground hover:text-background'}`}
+        className={`fixed top-56 right-4 z-50 flex items-center gap-2 px-3 py-2 border border-foreground transition-colors ${showConstellation ? 'bg-foreground text-background' : 'bg-background hover:bg-foreground hover:text-background'}`}
         title={showConstellation ? 'Exit stargazing mode' : 'Enter stargazing mode'}
       >
         <Sparkles size={14} />
@@ -507,7 +567,7 @@ function VoidBoardContent() {
       <button
         onClick={handleGenerateSummary}
         disabled={isLoadingSummary || notes.length === 0}
-        className="fixed top-56 right-4 z-50 flex items-center gap-2 px-3 py-2 border border-foreground bg-background hover:bg-foreground hover:text-background transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        className="fixed top-68 right-4 z-50 flex items-center gap-2 px-3 py-2 border border-foreground bg-background hover:bg-foreground hover:text-background transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         title="Generate poetic void summary"
       >
         <BookOpen size={14} />
@@ -518,12 +578,13 @@ function VoidBoardContent() {
       <button
         onClick={handleSuggestConnections}
         disabled={isLoadingConnections || notes.length < 2}
-        className="fixed top-68 right-4 z-50 flex items-center gap-2 px-3 py-2 border border-foreground bg-background hover:bg-foreground hover:text-background transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        className="fixed top-80 right-4 z-50 flex items-center gap-2 px-3 py-2 border border-foreground bg-background hover:bg-foreground hover:text-background transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         title="AI suggests note connections"
       >
         <Zap size={14} />
         <span className="text-xs uppercase tracking-widest font-mono">Connect</span>
       </button>
+
 
       {/* Loading state */}
       {isLoading && (
@@ -535,7 +596,8 @@ function VoidBoardContent() {
       {/* Notes container */}
       <div className="pt-16 min-h-screen" onClick={connectingFrom ? cancelConnection : undefined}>
         {notes.map((note) => {
-          const isMatch = noteMatchesSearch(note, searchQuery);
+          const isMatch = noteMatchesSearch(note, searchQuery) && 
+            (selectedTags.length === 0 || selectedTags.some(tag => note.tags.includes(tag)));
           const isConnecting = connectingFrom === note.id;
           const isConnectionTarget = connectingFrom !== null && connectingFrom !== note.id;
           
@@ -548,9 +610,13 @@ function VoidBoardContent() {
               initialRotation={note.rotation}
               initialColor={note.color}
               initialShape={note.shape}
-              dimmed={searchQuery.trim() !== '' && !isMatch}
+              initialTags={note.tags}
+              dimmed={(searchQuery.trim() !== '' || selectedTags.length > 0) && !isMatch}
               isConnecting={isConnecting}
               isConnectionTarget={isConnectionTarget}
+              reactionCounts={getReactionCounts(note.id)}
+              hasUserReacted={(emoji) => hasUserReacted(note.id, emoji)}
+              onReact={(emoji) => handleReact(note.id, emoji)}
               onDelete={handleDeleteNote}
               onUpdate={handleUpdateNote}
               onDrop={handleNoteDrop}
