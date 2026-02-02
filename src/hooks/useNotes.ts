@@ -8,6 +8,7 @@ export interface Note {
   rotation: number;
   parent_id: string | null;
   color: string | null;
+  void_id: string | null;
 }
 
 function generateId(): string {
@@ -28,17 +29,26 @@ function getRandomPosition(): { x: number; y: number } {
   };
 }
 
-export function useNotes() {
+export function useNotes(voidId: string | null = null) {
   const [notes, setNotes] = useState<Note[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Fetch initial notes
+  // Fetch initial notes for current void
   useEffect(() => {
     const fetchNotes = async () => {
-      const { data, error } = await supabase
+      setIsLoading(true);
+      let query = supabase
         .from('notes')
         .select('*')
         .order('created_at', { ascending: true });
+      
+      if (voidId) {
+        query = query.eq('void_id', voidId);
+      } else {
+        query = query.is('void_id', null);
+      }
+      
+      const { data, error } = await query;
       
       if (!error && data) {
         setNotes(data.map(n => ({
@@ -48,24 +58,30 @@ export function useNotes() {
           rotation: n.rotation,
           parent_id: n.parent_id,
           color: n.color ?? null,
+          void_id: n.void_id ?? null,
         })));
       }
       setIsLoading(false);
     };
     
     fetchNotes();
-  }, []);
+  }, [voidId]);
 
-  // Subscribe to realtime changes
+  // Subscribe to realtime changes for current void
   useEffect(() => {
     const channel = supabase
-      .channel('notes-realtime')
+      .channel(`notes-realtime-${voidId ?? 'public'}`)
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'notes' },
         (payload) => {
+          const n = payload.new as any;
+          const noteVoidId = n?.void_id ?? null;
+          const oldNoteVoidId = (payload.old as any)?.void_id ?? null;
+          
+          // Only process events for current void
           if (payload.eventType === 'INSERT') {
-            const n = payload.new as any;
+            if (noteVoidId !== voidId) return;
             setNotes(prev => {
               if (prev.some(note => note.id === n.id)) return prev;
               return [...prev, {
@@ -75,18 +91,20 @@ export function useNotes() {
                 rotation: n.rotation,
                 parent_id: n.parent_id,
                 color: n.color ?? null,
+                void_id: n.void_id ?? null,
               }];
             });
           } else if (payload.eventType === 'UPDATE') {
-            const n = payload.new as any;
+            if (noteVoidId !== voidId) return;
             setNotes(prev => prev.map(note => 
               note.id === n.id 
                 ? { ...note, text: n.text, position: { x: n.position_x, y: n.position_y }, color: n.color ?? null, parent_id: n.parent_id }
                 : note
             ));
           } else if (payload.eventType === 'DELETE') {
-            const n = payload.old as any;
-            setNotes(prev => prev.filter(note => note.id !== n.id));
+            const oldN = payload.old as any;
+            if (oldNoteVoidId !== voidId) return;
+            setNotes(prev => prev.filter(note => note.id !== oldN.id));
           }
         }
       )
@@ -95,12 +113,12 @@ export function useNotes() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, []);
+  }, [voidId]);
 
   const addNote = useCallback(async (parentId?: string, parentPosition?: { x: number; y: number }) => {
     const id = generateId();
     const position = parentPosition 
-      ? { x: parentPosition.x + 20, y: parentPosition.y + 20 } // Stack offset
+      ? { x: parentPosition.x + 20, y: parentPosition.y + 20 }
       : getRandomPosition();
     const rotation = getRandomRotation();
 
@@ -112,6 +130,7 @@ export function useNotes() {
       rotation,
       parent_id: parentId || null,
       color: null,
+      void_id: voidId,
     };
     setNotes(prev => [...prev, newNote]);
 
@@ -124,10 +143,11 @@ export function useNotes() {
       rotation,
       parent_id: parentId || null,
       color: null,
+      void_id: voidId,
     });
 
     return id;
-  }, []);
+  }, [voidId]);
 
   const updateNote = useCallback(async (id: string, updates: Partial<Pick<Note, 'text' | 'position' | 'color' | 'parent_id'>>) => {
     // Optimistic update

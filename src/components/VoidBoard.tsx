@@ -4,14 +4,21 @@ import { StickyNote } from './StickyNote';
 import { Switch } from '@/components/ui/switch';
 import { useNotes, Note } from '@/hooks/useNotes';
 import { useConnections } from '@/hooks/useConnections';
+import { useAuth } from '@/hooks/useAuth';
+import { useVoids } from '@/hooks/useVoids';
 import { ConnectionsOverlay } from './ConnectionsOverlay';
 import { SearchBar } from './SearchBar';
 import { NotePositionsProvider, useNotePositions } from '@/contexts/NotePositionsContext';
 import { WelcomeIntro } from './WelcomeIntro';
+import { VoidSwitcher } from './VoidSwitcher';
+import { AuthModal } from './AuthModal';
+import { CreateVoidModal } from './CreateVoidModal';
+import { JoinVoidModal } from './JoinVoidModal';
+import { useToast } from '@/hooks/use-toast';
 
 const NOTE_WIDTH = 256;
 const NOTE_HEIGHT = 200;
-const OVERLAP_THRESHOLD = 150; // How close notes need to be to be considered overlapping
+const OVERLAP_THRESHOLD = 150;
 
 function noteMatchesSearch(note: Note, query: string): boolean {
   if (!query.trim()) return true;
@@ -67,8 +74,13 @@ function pointToLineDistance(
 }
 
 function VoidBoardContent() {
-  const { notes, isLoading, addNote, updateNote, deleteNote } = useNotes();
-  const { connections, addConnection, removeConnectionsForNote } = useConnections();
+  const { user, signOut } = useAuth();
+  const { voids, createVoid, deleteVoid, joinVoidByCode } = useVoids(user?.id ?? null);
+  const { toast } = useToast();
+  
+  const [currentVoidId, setCurrentVoidId] = useState<string | null>(null);
+  const { notes, isLoading, addNote, updateNote, deleteNote } = useNotes(currentVoidId);
+  const { connections, addConnection, removeConnectionsForNote } = useConnections(currentVoidId);
   const { getPosition } = useNotePositions();
   
   const [isBoardMode, setIsBoardMode] = useState(false);
@@ -79,6 +91,60 @@ function VoidBoardContent() {
   const [showWelcome, setShowWelcome] = useState(() => {
     return !localStorage.getItem('void-welcomed');
   });
+  
+  // Modal states
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [showCreateVoidModal, setShowCreateVoidModal] = useState(false);
+  const [showJoinVoidModal, setShowJoinVoidModal] = useState(false);
+
+  // Handle join code from URL
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const joinCode = params.get('join');
+    
+    if (joinCode) {
+      // Remove from URL
+      window.history.replaceState({}, '', window.location.pathname);
+      
+      if (user) {
+        // Try to join immediately
+        handleJoinVoid(joinCode);
+      } else {
+        // Store for after login
+        localStorage.setItem('pending-join-code', joinCode);
+        setShowAuthModal(true);
+      }
+    }
+  }, [user]);
+
+  // Check for pending join code after login
+  useEffect(() => {
+    if (user) {
+      const pendingCode = localStorage.getItem('pending-join-code');
+      if (pendingCode) {
+        localStorage.removeItem('pending-join-code');
+        handleJoinVoid(pendingCode);
+      }
+    }
+  }, [user]);
+
+  const handleJoinVoid = async (code: string) => {
+    // Extract code from URL if full URL was pasted
+    let inviteCode = code;
+    if (code.includes('?join=')) {
+      inviteCode = code.split('?join=')[1];
+    }
+    
+    const result = await joinVoidByCode(inviteCode);
+    if (result.success && result.void) {
+      setCurrentVoidId(result.void.id);
+      toast({
+        title: 'Joined void!',
+        description: `You're now in "${result.void.name}"`,
+      });
+    }
+    return result;
+  };
 
   // Track mouse position when connecting
   useEffect(() => {
@@ -106,7 +172,6 @@ function VoidBoardContent() {
     };
   }, [connectingFrom]);
 
-  // Filter notes based on search
   const filteredNotes = useMemo(() => {
     return notes.filter(note => noteMatchesSearch(note, searchQuery));
   }, [notes, searchQuery]);
@@ -136,7 +201,6 @@ function VoidBoardContent() {
 
   const handleStartConnection = useCallback((noteId: string) => {
     if (connectingFrom === noteId) {
-      // Cancel connection if clicking same note
       setConnectingFrom(null);
     } else {
       setConnectingFrom(noteId);
@@ -149,7 +213,6 @@ function VoidBoardContent() {
       return;
     }
 
-    // Get positions of connected notes
     const fromPos = getPosition(connectingFrom) || notes.find(n => n.id === connectingFrom)?.position;
     const toPos = getPosition(targetId) || notes.find(n => n.id === targetId)?.position;
 
@@ -158,23 +221,15 @@ function VoidBoardContent() {
       return;
     }
 
-    // Find notes that might overlap with the connection line or connected notes
-    const lineCenter = {
-      x: (fromPos.x + toPos.x) / 2 + NOTE_WIDTH / 2,
-      y: (fromPos.y + toPos.y) / 2 + NOTE_HEIGHT / 2,
-    };
-
     const fromCenter = { x: fromPos.x + NOTE_WIDTH / 2, y: fromPos.y + NOTE_HEIGHT / 2 };
     const toCenter = { x: toPos.x + NOTE_WIDTH / 2, y: toPos.y + NOTE_HEIGHT / 2 };
 
-    // Find overlapping notes and move them
     const notesToMove = notes.filter(note => {
       if (note.id === connectingFrom || note.id === targetId) return false;
       
       const notePos = getPosition(note.id) || note.position;
       const noteCenter = { x: notePos.x + NOTE_WIDTH / 2, y: notePos.y + NOTE_HEIGHT / 2 };
       
-      // Check if note overlaps with either connected note
       const distToFrom = getDistance(noteCenter, fromCenter);
       const distToTo = getDistance(noteCenter, toCenter);
       
@@ -182,7 +237,6 @@ function VoidBoardContent() {
         return true;
       }
       
-      // Check if note is too close to the connection line
       const distToLine = pointToLineDistance(noteCenter, fromCenter, toCenter);
       if (distToLine < OVERLAP_THRESHOLD) {
         return true;
@@ -191,12 +245,10 @@ function VoidBoardContent() {
       return false;
     });
 
-    // Move overlapping notes to random positions
     for (const note of notesToMove) {
       let newPos = getRandomPosition();
       let attempts = 0;
       
-      // Try to find a position that doesn't overlap with connected notes
       while (attempts < 10) {
         const newCenter = { x: newPos.x + NOTE_WIDTH / 2, y: newPos.y + NOTE_HEIGHT / 2 };
         const distToFrom = getDistance(newCenter, fromCenter);
@@ -214,7 +266,6 @@ function VoidBoardContent() {
       updateNote(note.id, { position: newPos });
     }
 
-    // Create the connection
     await addConnection(connectingFrom, targetId);
     setConnectingFrom(null);
   }, [connectingFrom, notes, getPosition, addConnection, updateNote]);
@@ -227,10 +278,49 @@ function VoidBoardContent() {
     setShowWelcome(false);
   }, []);
 
+  const handleCreateVoid = async (name: string) => {
+    const newVoid = await createVoid(name);
+    if (newVoid) {
+      setCurrentVoidId(newVoid.id);
+      toast({
+        title: 'Void created!',
+        description: 'Share the invite link to bring others in.',
+      });
+    }
+  };
+
+  const handleDeleteVoid = async (id: string) => {
+    if (currentVoidId === id) {
+      setCurrentVoidId(null);
+    }
+    await deleteVoid(id);
+    toast({
+      title: 'Void deleted',
+      description: 'The void and all its notes have been removed.',
+    });
+  };
+
+  const currentVoid = currentVoidId ? voids.find(v => v.id === currentVoidId) : null;
+
   return (
     <div className={`void-board relative ${isBoardMode ? 'mode-board' : ''}`}>
-      {/* Welcome Intro */}
+      {/* Modals */}
       <WelcomeIntro visible={showWelcome} onDismiss={handleDismissWelcome} />
+      <AuthModal 
+        isOpen={showAuthModal} 
+        onClose={() => setShowAuthModal(false)}
+        onSuccess={() => {}}
+      />
+      <CreateVoidModal
+        isOpen={showCreateVoidModal}
+        onClose={() => setShowCreateVoidModal(false)}
+        onSubmit={handleCreateVoid}
+      />
+      <JoinVoidModal
+        isOpen={showJoinVoidModal}
+        onClose={() => setShowJoinVoidModal(false)}
+        onSubmit={handleJoinVoid}
+      />
 
       {/* SVG Connections Overlay */}
       <ConnectionsOverlay 
@@ -244,9 +334,23 @@ function VoidBoardContent() {
 
       {/* Title */}
       <header className="fixed top-0 left-0 right-0 z-40 p-4 border-b border-foreground bg-background">
-        <h1 className="text-xl font-bold uppercase tracking-[0.5em] text-center">
-          THE MULTIPLAYER VOID
-        </h1>
+        <div className="flex items-center justify-between">
+          <VoidSwitcher
+            currentVoidId={currentVoidId}
+            voids={voids}
+            user={user}
+            onSwitchVoid={setCurrentVoidId}
+            onCreateVoid={() => setShowCreateVoidModal(true)}
+            onDeleteVoid={handleDeleteVoid}
+            onJoinVoid={() => setShowJoinVoidModal(true)}
+            onSignIn={() => setShowAuthModal(true)}
+            onSignOut={signOut}
+          />
+          <h1 className="text-xl font-bold uppercase tracking-[0.5em] text-center flex-1">
+            {currentVoid ? currentVoid.name.toUpperCase() : 'THE MULTIPLAYER VOID'}
+          </h1>
+          <div className="w-[180px]" /> {/* Spacer for balance */}
+        </div>
       </header>
 
       {/* Search Bar */}
@@ -261,14 +365,14 @@ function VoidBoardContent() {
 
       {/* Connection Mode Indicator */}
       {connectingFrom && (
-        <div className="fixed top-28 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 px-4 py-2 bg-yellow-500/20 border border-yellow-500 text-yellow-300 rounded-lg">
+        <div className="fixed top-28 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 px-4 py-2 bg-yellow-500/20 border border-yellow-500 text-yellow-300">
           <Link2 size={16} />
           <span className="text-sm font-mono uppercase tracking-wider">
             Click another note to connect
           </span>
           <button
             onClick={cancelConnection}
-            className="ml-2 p-1 hover:bg-yellow-500/30 rounded"
+            className="ml-2 p-1 hover:bg-yellow-500/30"
             title="Cancel connection"
           >
             <X size={14} />
@@ -339,7 +443,9 @@ function VoidBoardContent() {
         {!isLoading && notes.length === 0 && (
           <div className="fixed inset-0 flex items-center justify-center pointer-events-none">
             <div className="text-center text-muted-foreground">
-              <p className="text-lg uppercase tracking-widest mb-2">THE VOID AWAITS</p>
+              <p className="text-lg uppercase tracking-widest mb-2">
+                {currentVoid ? 'YOUR VOID IS EMPTY' : 'THE VOID AWAITS'}
+              </p>
               <p className="text-sm opacity-50">Click + to spawn a note</p>
             </div>
           </div>
@@ -358,6 +464,7 @@ function VoidBoardContent() {
       {/* Footer */}
       <footer className="fixed bottom-0 left-0 p-4 text-xs text-muted-foreground uppercase tracking-wider">
         Notes: {notes.length} | Connections: {connections.length}
+        {user && <span> | {user.email}</span>}
       </footer>
     </div>
   );

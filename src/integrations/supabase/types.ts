@@ -20,18 +20,21 @@ export type Database = {
           from_note_id: string
           id: string
           to_note_id: string
+          void_id: string | null
         }
         Insert: {
           created_at?: string
           from_note_id: string
           id?: string
           to_note_id: string
+          void_id?: string | null
         }
         Update: {
           created_at?: string
           from_note_id?: string
           id?: string
           to_note_id?: string
+          void_id?: string | null
         }
         Relationships: [
           {
@@ -46,6 +49,13 @@ export type Database = {
             columns: ["to_note_id"]
             isOneToOne: false
             referencedRelation: "notes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "note_connections_void_id_fkey"
+            columns: ["void_id"]
+            isOneToOne: false
+            referencedRelation: "voids"
             referencedColumns: ["id"]
           },
         ]
@@ -95,6 +105,7 @@ export type Database = {
           position_y: number
           rotation: number
           text: string
+          void_id: string | null
         }
         Insert: {
           color?: string | null
@@ -105,6 +116,7 @@ export type Database = {
           position_y?: number
           rotation?: number
           text?: string
+          void_id?: string | null
         }
         Update: {
           color?: string | null
@@ -115,6 +127,7 @@ export type Database = {
           position_y?: number
           rotation?: number
           text?: string
+          void_id?: string | null
         }
         Relationships: [
           {
@@ -124,7 +137,73 @@ export type Database = {
             referencedRelation: "notes"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "notes_void_id_fkey"
+            columns: ["void_id"]
+            isOneToOne: false
+            referencedRelation: "voids"
+            referencedColumns: ["id"]
+          },
         ]
+      }
+      void_members: {
+        Row: {
+          id: string
+          invited_at: string
+          role: string
+          user_id: string
+          void_id: string
+        }
+        Insert: {
+          id?: string
+          invited_at?: string
+          role?: string
+          user_id: string
+          void_id: string
+        }
+        Update: {
+          id?: string
+          invited_at?: string
+          role?: string
+          user_id?: string
+          void_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "void_members_void_id_fkey"
+            columns: ["void_id"]
+            isOneToOne: false
+            referencedRelation: "voids"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      voids: {
+        Row: {
+          created_at: string
+          id: string
+          invite_code: string | null
+          is_public: boolean
+          name: string
+          owner_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          invite_code?: string | null
+          is_public?: boolean
+          name?: string
+          owner_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          invite_code?: string | null
+          is_public?: boolean
+          name?: string
+          owner_id?: string | null
+        }
+        Relationships: []
       }
     }
     Views: {
