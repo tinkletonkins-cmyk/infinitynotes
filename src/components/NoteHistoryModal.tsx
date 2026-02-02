@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { forwardRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Clock, ArrowRight } from 'lucide-react';
 import { HistoryEntry } from '@/hooks/useNoteHistory';
@@ -13,14 +13,14 @@ interface NoteHistoryModalProps {
   onRestore: (entry: HistoryEntry) => void;
 }
 
-export function NoteHistoryModal({ 
+export const NoteHistoryModal = forwardRef<HTMLDivElement, NoteHistoryModalProps>(({ 
   isOpen, 
   onClose, 
   history, 
   isLoading, 
   currentText,
   onRestore 
-}: NoteHistoryModalProps) {
+}, ref) => {
   if (!isOpen) return null;
 
   return (
@@ -125,4 +125,6 @@ export function NoteHistoryModal({
       )}
     </AnimatePresence>
   );
-}
+});
+
+NoteHistoryModal.displayName = 'NoteHistoryModal';

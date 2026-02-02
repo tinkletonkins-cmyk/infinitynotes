@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, forwardRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface TrailPoint {
@@ -22,7 +22,7 @@ const TRAIL_INTERVAL = 50; // ms between trail points
 const TRAIL_LIFETIME = 600; // ms before trail fades completely
 const MAX_TRAIL_POINTS = 12;
 
-export function NoteTrail({ noteId, isDragging, x, y, rotation, color }: NoteTrailProps) {
+export const NoteTrail = forwardRef<HTMLDivElement, NoteTrailProps>(({ noteId, isDragging, x, y, rotation, color }, ref) => {
   const [trails, setTrails] = useState<TrailPoint[]>([]);
   
   // Add trail points while dragging
@@ -123,4 +123,6 @@ export function NoteTrail({ noteId, isDragging, x, y, rotation, color }: NoteTra
       </AnimatePresence>
     </div>
   );
-}
+});
+
+NoteTrail.displayName = 'NoteTrail';
