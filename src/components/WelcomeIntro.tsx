@@ -8,7 +8,6 @@ interface WelcomeIntroProps {
 
 export function WelcomeIntro({ visible, onDismiss }: WelcomeIntroProps) {
   const handleDismiss = () => {
-    localStorage.setItem('void-welcomed', 'true');
     onDismiss();
   };
 
