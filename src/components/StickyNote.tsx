@@ -12,6 +12,7 @@ import { NoteReactions } from './NoteReactions';
 import { NoteTags } from './NoteTags';
 import { NoteHistoryModal } from './NoteHistoryModal';
 import { useNotePositions } from '@/contexts/NotePositionsContext';
+import { TypingIndicator } from './TypingIndicator';
 
 interface StickyNoteProps {
   id: string;
@@ -320,7 +321,7 @@ export function StickyNote({
     >
       <div
         style={backgroundStyle}
-        className={`relative w-full h-full ${!displayColor ? emotionClass : ''} border border-foreground ${shape === 'circle' ? 'aspect-square flex flex-col' : ''}`}
+        className={`relative w-full h-full ${!displayColor ? emotionClass : ''} border border-foreground ${shape === 'circle' ? 'aspect-square flex flex-col' : ''} note-glow note-glow-${!displayColor ? emotion : 'custom'}`}
       >
         {/* Header with drag handle */}
         <div className="flex items-center justify-between p-2 border-b border-current">
@@ -380,8 +381,8 @@ export function StickyNote({
         />
         {/* Remote typing indicator */}
         {remoteText !== undefined && !isLocallyEditing && (
-          <div className="absolute top-12 right-2 flex items-center gap-1 text-xs opacity-60">
-            <span className="animate-pulse">✍️</span>
+          <div className="absolute top-12 right-2 flex items-center gap-1 text-xs opacity-70">
+            <TypingIndicator />
           </div>
         )}
 
