@@ -1,111 +1,131 @@
 
-
-# Void Navigator: Multiverse Minimap
+# Multiverse Navigator Overhaul: Cosmic Debris, Portal Voids, and Prime Realities
 
 ## Overview
 
-A new full-screen overlay that replaces the current tab-like VoidSwitcher dropdown with an immersive "multiverse" view. When activated, the board zooms out to reveal all voids as glowing cosmic nodes in a dark space. Users click a void node to smoothly zoom into that board.
+Three interconnected enhancements to the Void Navigator that transform it from a simple node map into a living cosmic space. Flying sticky note debris drifts through the void, each void becomes a swirling purple portal, and 10 "Prime Reality" voids form the backbone constellation of the multiverse.
 
 ---
 
-## User Experience
+## 1. Flying Sticky Notes (Cosmic Debris)
 
-1. A new **"Map"** button appears in the bottom-left navigator (or replaces the recenter button).
-2. Clicking it triggers a smooth zoom-out animation, fading the current board and revealing the **Multiverse View** -- a full-screen cosmic map.
-3. Each void appears as a **circular node**:
-   - Empty voids: dark purple, dim, small
-   - Note-filled voids: glowing with pulsing light, size proportional to note count
-   - Current void: highlighted ring
-   - Public void: always visible with a globe icon
-4. **Faint interconnection lines** are drawn between voids that share the same owner or members (related voids).
-5. Clicking a void node triggers a smooth **zoom-in animation** that transitions into that board.
-6. Pressing Escape or clicking empty space closes the navigator and returns to the current board.
+Non-interactive sticky note silhouettes that drift through the navigator space, giving it a lived-in feel.
+
+- 15-20 small rectangular shapes (~35x22px) with slight border-radius
+- Three parallax depth layers (far/mid/near) with different speeds, sizes, and opacities (0.04-0.12)
+- Slow orbital drift using framer-motion keyframe animations (20-40s loops)
+- Random gentle rotation as they float
+- Muted purple/violet/indigo tones
+- `pointer-events: none` so they never block interaction
+- Generated with `useMemo` for stable positions across re-renders
 
 ---
 
-## Technical Plan
+## 2. Purple Portal Voids
 
-### 1. New Component: `VoidNavigator.tsx`
+Replace the current flat circle nodes with animated swirling portals.
 
-A full-screen overlay using Framer Motion for animations.
+**Unlocked voids (user has access):**
+- Glowing purple ring with rotating border animation (CSS `conic-gradient` trick)
+- Animated vortex center using layered radial gradients with rotation
+- Faint energy spark particles orbiting the ring
+- Slow continuous rotation (~20s per revolution)
+- Pulse every 3-5 seconds (scale 1 to 1.08)
+- Bright, stable, inviting glow
 
-**Props:**
-- `isOpen: boolean`
-- `onClose: () => void`
-- `voids: Void[]` -- all available voids
-- `currentVoidId: string | null`
-- `voidNoteCounts: Record<string, number>` -- note count per void for glow intensity
-- `onSelectVoid: (voidId: string | null) => void`
-- `user: { id: string; email?: string } | null`
+**Locked voids (private, not owned by user):**
+- Darker purple tones, reduced opacity
+- "Cracked" energy shell -- broken dashed ring border
+- Faint flicker animation (opacity jitter)
+- Lock glyph (`Lock` icon from lucide) overlaid at center
+- No vortex animation, just a dim static interior
 
-**Rendering:**
-- Dark purple background (`bg-[#0a0014]`) with subtle star particles (CSS dots or canvas)
-- Each void rendered as an `<motion.div>` circle positioned using a force-directed or circular layout algorithm
-- Glow effect via `box-shadow` with intensity based on note count
-- SVG lines between related voids (same owner)
-- Public void always in center
-- Labels below each node
+**Status readable from color at a glance:**
+- Bright purple + glow = unlocked, active
+- Dark purple + flicker = locked
+- White ring = current void
 
-**Animations:**
-- Entry: scale from current zoom level to 0.05 with opacity fade, then reveal nodes
-- Exit (selecting a void): nodes fade, zoom smoothly into selected void
-- Idle: subtle floating/breathing animation on nodes using Framer Motion
+---
 
-### 2. New Hook: `useVoidNoteCounts.ts`
+## 3. Prime Realities System
 
-Fetches note counts for all voids the user has access to, to determine glow intensity.
+10 predefined "backbone" voids arranged in a fixed constellation layout with specific interconnection lines.
 
-```typescript
-// Queries: SELECT void_id, COUNT(*) FROM notes GROUP BY void_id
-// Returns: Record<string, number>
+**Database changes -- add columns to `voids` table:**
+- `energy_cost` (integer, default 0) -- visual tier indicator
+- `visual_tier` (integer, default 1, range 1-5) -- controls portal size/glow intensity
+- `is_prime` (boolean, default false) -- marks Prime Reality voids
+
+**Constellation layout:**
+The 10 Prime Reality voids use fixed positions in a hardcoded constellation pattern matching the user's diagram:
+
+```text
+      Void 3 ---- Void 4
+     /                  \
+Void 1 ---- Void 2 ---- Void 5
+     \                  /
+      Void 6 ---- Void 7
+           |
+        Void 8
+           |
+        Void 9 ---- Void 10
 ```
 
-### 3. Modify `VoidBoard.tsx`
+Non-prime voids float in the outer area using the existing circular layout. Prime voids are rendered larger and more prominently.
 
-- Add `showNavigator` state
-- Add button to trigger multiverse view (a "Map" icon in the bottom-left navigator or a dedicated button)
-- Render `<VoidNavigator>` overlay
-- When a void is selected in the navigator, set `currentVoidId` and close the overlay
+**Connection lines:**
+- All voids interconnected with dotted SVG lines (as shown in diagram)
+- Prime-to-prime connections are brighter (opacity 0.25 vs 0.15)
+- Non-prime voids connect to their nearest prime void with dimmer lines
 
-### 4. Modify `BoardNavigator.tsx`
-
-- Add a new "Map" button (using `Map` icon from lucide) below the recenter button, separated by a divider
-
-### 5. CSS Additions in `index.css`
-
-- Cosmic background with radial gradients
-- Glow keyframe animations for void nodes
-- Star particle effect (small dots scattered via CSS pseudo-elements or a simple canvas)
+**Each Prime Reality displays:**
+- Name label below
+- Visual tier indicator (ring thickness/glow intensity scales with tier)
+- Energy cost as a small badge
+- Lock/unlock state via the portal visual style
 
 ---
 
-## Layout Algorithm
+## Technical Details
 
-Void nodes will be arranged in a **circular layout** around a central "Public Void" node:
-- Public Void in the center
-- User's voids arranged in a circle around it
-- Radius and spacing scale with number of voids
-- Slight random offset for organic feel
+### Files to Modify
 
----
+**`src/components/VoidNavigator.tsx`** (major rewrite):
+- Add `CosmicDebris` internal component for flying sticky notes
+- Replace flat circle nodes with `PortalNode` internal component
+- Add constellation layout logic for prime voids
+- Add lock/unlock visual distinction based on `is_public` and `owner_id` matching current user
+- Render all voids interconnected with dotted lines (not just same-owner)
 
-## Visual Details
+**`src/index.css`**:
+- Add `@keyframes portalSpin` for rotating vortex effect
+- Add `@keyframes portalPulse` for periodic pulse
+- Add `@keyframes flickerLocked` for locked void flicker
 
-- **Empty void node**: 40px circle, `#1a0a2e` fill, dim `0.4` opacity
-- **Filled void node**: 50-80px circle (scales with notes), purple-blue glow (`box-shadow: 0 0 20px #7c3aed`)
-- **Current void**: white ring border
-- **Connection lines**: SVG paths with `stroke: rgba(139, 92, 246, 0.15)`, dashed
-- **Background**: radial gradient from deep purple center to black edges
-- **Node labels**: small monospace text below each circle
+**Database migration**:
+- Add `energy_cost`, `visual_tier`, `is_prime` columns to `voids` table
+- Seed 10 Prime Reality voids with predefined names and constellation metadata
 
----
+### Lock State Logic
 
-## Files to Create
-- `src/components/VoidNavigator.tsx` -- the multiverse overlay
-- `src/hooks/useVoidNoteCounts.ts` -- note counts per void
+A void is considered **locked** if:
+- `is_public` is false AND `owner_id` does not match the current user's ID AND the user is not a member
 
-## Files to Modify
-- `src/components/VoidBoard.tsx` -- add state, button, and render navigator
-- `src/components/BoardNavigator.tsx` -- add "Map" button
-- `src/index.css` -- cosmic background styles and glow animations
+A void is considered **unlocked** if:
+- `is_public` is true, OR `owner_id` matches current user, OR user is a void member
 
+This uses the same access logic already present in the app.
+
+### Layout Algorithm Update
+
+1. Prime voids get fixed pixel positions based on the constellation diagram, centered on screen
+2. Non-prime voids are arranged in an outer ring beyond the constellation
+3. All voids are interconnected with dotted lines
+4. The public void remains at center if no prime voids exist
+
+### New Props for VoidNavigator
+
+The existing props are sufficient. The component will:
+- Derive lock state from `void.is_public`, `void.owner_id`, and `user.id`
+- Read `visual_tier`, `energy_cost`, `is_prime` from the void data (new DB columns)
+- Use `voidNoteCounts` for additional glow intensity on active portals
