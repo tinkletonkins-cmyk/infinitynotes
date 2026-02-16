@@ -1,13 +1,14 @@
-import { Home, ZoomIn, ZoomOut } from 'lucide-react';
+import { Home, ZoomIn, ZoomOut, Map } from 'lucide-react';
 
 interface BoardNavigatorProps {
   zoom: number;
   onRecenter: () => void;
   onZoomIn: () => void;
   onZoomOut: () => void;
+  onOpenNavigator?: () => void;
 }
 
-export function BoardNavigator({ zoom, onRecenter, onZoomIn, onZoomOut }: BoardNavigatorProps) {
+export function BoardNavigator({ zoom, onRecenter, onZoomIn, onZoomOut, onOpenNavigator }: BoardNavigatorProps) {
   const zoomPercent = Math.round(zoom * 100);
 
   return (
@@ -43,6 +44,19 @@ export function BoardNavigator({ zoom, onRecenter, onZoomIn, onZoomOut }: BoardN
       >
         <Home size={14} />
       </button>
+
+      {onOpenNavigator && (
+        <>
+          <div className="h-px w-6 bg-foreground/30 my-1" />
+          <button
+            onClick={onOpenNavigator}
+            className="p-2 hover:bg-foreground hover:text-background transition-colors"
+            title="Multiverse Navigator"
+          >
+            <Map size={14} />
+          </button>
+        </>
+      )}
     </div>
   );
 }
