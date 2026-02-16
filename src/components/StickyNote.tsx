@@ -423,7 +423,7 @@ export function StickyNote({
           scale: { duration: 0.1 },
           boxShadow: { duration: 0.1 },
         }}
-        className={`absolute w-[233px] ${canDrag ? 'cursor-grab' : 'cursor-default'} note-shape-${shape} ${dimmed ? 'opacity-10 pointer-events-none' : ''} ${isConnectionTarget ? 'ring-2 ring-cyan-400 ring-offset-2 ring-offset-background cursor-pointer' : ''} ${isConnecting ? 'ring-2 ring-yellow-400' : ''} ${isLocked ? 'ring-1 ring-amber-500/50' : ''}`}
+        className={`absolute w-[210px] ${canDrag ? 'cursor-grab' : 'cursor-default'} note-shape-${shape} ${dimmed ? 'opacity-10 pointer-events-none' : ''} ${isConnectionTarget ? 'ring-2 ring-cyan-400 ring-offset-2 ring-offset-background cursor-pointer' : ''} ${isConnecting ? 'ring-2 ring-yellow-400' : ''} ${isLocked ? 'ring-1 ring-amber-500/50' : ''}`}
       >
       <div
         style={backgroundStyle}
