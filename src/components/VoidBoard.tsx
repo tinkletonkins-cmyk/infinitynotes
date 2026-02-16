@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useMemo, useEffect } from 'react';
-import { Plus, Loader2, Link2, X, Sparkles, BookOpen, Zap, Pencil } from 'lucide-react';
+import { Plus, Loader2, Link2, X, Sparkles, BookOpen, Zap, Pencil, Wrench } from 'lucide-react';
 import { StickyNote } from './StickyNote';
 import { Switch } from '@/components/ui/switch';
 import { useNotes, Note } from '@/hooks/useNotes';
@@ -35,6 +35,7 @@ import { VoidPulse } from './VoidPulse';
 import { SyncIndicator } from './SyncIndicator';
 import { VoidNavigator } from './VoidNavigator';
 import { useVoidNoteCounts } from '@/hooks/useVoidNoteCounts';
+import { EquipmentShop } from './EquipmentShop';
 
 const NOTE_WIDTH = 256;
 const NOTE_HEIGHT = 200;
@@ -154,6 +155,7 @@ function VoidBoardContent() {
   const [drawingMode, setDrawingMode] = useState(false);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [showNavigator, setShowNavigator] = useState(false);
+  const [showEquipmentShop, setShowEquipmentShop] = useState(false);
 
   // Void note counts for navigator glow
   const voidIds = useMemo(() => voids.map(v => v.id), [voids]);
@@ -627,6 +629,13 @@ function VoidBoardContent() {
         </div>
       )}
 
+      {/* Equipment Shop */}
+      <EquipmentShop
+        isOpen={showEquipmentShop}
+        onClose={() => setShowEquipmentShop(false)}
+        userId={user?.id ?? null}
+        currentVoidId={currentVoidId}
+      />
 
       {/* Board Theme Picker */}
       <div className="fixed top-20 right-4 z-50">
@@ -675,8 +684,17 @@ function VoidBoardContent() {
         <span className="text-xs uppercase tracking-widest font-mono">Connect</span>
       </button>
 
+      {/* Equipment Shop button */}
+      <button
+        onClick={() => user ? setShowEquipmentShop(true) : setShowAuthModal(true)}
+        className="fixed top-80 right-4 z-50 flex items-center gap-2 px-3 py-2 border border-foreground bg-background hover:bg-foreground hover:text-background transition-colors"
+        title="Equipment Bay"
+      >
+        <Wrench size={14} />
+        <span className="text-xs uppercase tracking-widest font-mono">Equip</span>
+      </button>
 
-      {/* Loading state */}
+
       {isLoading && (
         <div className="fixed inset-0 flex items-center justify-center pointer-events-none">
           <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
