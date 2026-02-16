@@ -295,27 +295,36 @@ export type Database = {
       voids: {
         Row: {
           created_at: string
+          energy_cost: number
           id: string
           invite_code: string | null
+          is_prime: boolean
           is_public: boolean
           name: string
           owner_id: string | null
+          visual_tier: number
         }
         Insert: {
           created_at?: string
+          energy_cost?: number
           id?: string
           invite_code?: string | null
+          is_prime?: boolean
           is_public?: boolean
           name?: string
           owner_id?: string | null
+          visual_tier?: number
         }
         Update: {
           created_at?: string
+          energy_cost?: number
           id?: string
           invite_code?: string | null
+          is_prime?: boolean
           is_public?: boolean
           name?: string
           owner_id?: string | null
+          visual_tier?: number
         }
         Relationships: []
       }

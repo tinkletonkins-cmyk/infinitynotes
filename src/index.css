@@ -383,4 +383,25 @@
     from { transform: translateY(0); }
     to { transform: translateY(-20px); }
   }
+
+  /* Portal animations */
+  .portal-spin {
+    animation: portalSpin 20s linear infinite;
+  }
+
+  @keyframes portalSpin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+
+  .portal-flicker {
+    animation: flickerLocked 3s ease-in-out infinite;
+  }
+
+  @keyframes flickerLocked {
+    0%, 100% { opacity: 0.6; }
+    30% { opacity: 0.3; }
+    50% { opacity: 0.7; }
+    70% { opacity: 0.4; }
+  }
 }
