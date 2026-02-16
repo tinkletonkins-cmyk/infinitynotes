@@ -19,7 +19,7 @@ export function SyncIndicator({ isSyncing, lastSyncTime }: SyncIndicatorProps) {
   }, [lastSyncTime]);
 
   return (
-    <div className="fixed bottom-4 right-4 z-50 flex items-center gap-2">
+    <div className="fixed bottom-4 left-40 z-50 flex items-center gap-2">
       {/* Sync status dot */}
       <div className="relative">
         {/* Base dot */}

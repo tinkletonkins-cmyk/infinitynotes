@@ -11,7 +11,7 @@ export function BoardNavigator({ zoom, onRecenter, onZoomIn, onZoomOut }: BoardN
   const zoomPercent = Math.round(zoom * 100);
 
   return (
-    <div className="fixed bottom-4 right-4 z-[102] flex items-center gap-1 p-1 bg-background/90 backdrop-blur-sm border border-foreground">
+    <div className="fixed bottom-4 right-24 z-[102] flex items-center gap-1 p-1 bg-background/90 backdrop-blur-sm border border-foreground">
       <button
         onClick={onZoomOut}
         className="p-2 hover:bg-foreground hover:text-background transition-colors"

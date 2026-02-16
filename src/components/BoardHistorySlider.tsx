@@ -113,7 +113,7 @@ export function BoardHistorySlider({ voidId, currentNotes, onCopyNote }: BoardHi
       {/* Toggle button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className={`fixed bottom-24 right-4 z-50 flex items-center gap-2 px-3 py-2 border border-foreground transition-colors ${isOpen ? 'bg-foreground text-background' : 'bg-background hover:bg-foreground hover:text-background'}`}
+        className={`fixed bottom-28 right-4 z-50 flex items-center gap-2 px-3 py-2 border border-foreground transition-colors ${isOpen ? 'bg-foreground text-background' : 'bg-background hover:bg-foreground hover:text-background'}`}
         title="View board history"
       >
         <Clock size={14} />
@@ -127,7 +127,7 @@ export function BoardHistorySlider({ voidId, currentNotes, onCopyNote }: BoardHi
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 20 }}
-            className="fixed bottom-36 right-4 z-50 w-80 bg-background border border-foreground p-4"
+            className="fixed bottom-40 right-4 z-50 w-80 bg-background border border-foreground p-4"
           >
             {/* Header */}
             <div className="flex items-center justify-between mb-4">
