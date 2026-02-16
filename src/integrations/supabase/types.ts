@@ -49,6 +49,42 @@ export type Database = {
           },
         ]
       }
+      equipment_catalog: {
+        Row: {
+          category: string
+          created_at: string
+          description: string
+          effect_key: string
+          energy_cost: number
+          icon: string
+          id: string
+          name: string
+          tier: number
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          description: string
+          effect_key: string
+          energy_cost: number
+          icon: string
+          id?: string
+          name: string
+          tier?: number
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          description?: string
+          effect_key?: string
+          energy_cost?: number
+          icon?: string
+          id?: string
+          name?: string
+          tier?: number
+        }
+        Relationships: []
+      }
       note_connections: {
         Row: {
           created_at: string
@@ -260,6 +296,69 @@ export type Database = {
           },
         ]
       }
+      player_energy: {
+        Row: {
+          balance: number
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          balance?: number
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          balance?: number
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      player_equipment: {
+        Row: {
+          equipment_id: string
+          id: string
+          is_active: boolean
+          purchased_at: string
+          user_id: string
+          void_id: string | null
+        }
+        Insert: {
+          equipment_id: string
+          id?: string
+          is_active?: boolean
+          purchased_at?: string
+          user_id: string
+          void_id?: string | null
+        }
+        Update: {
+          equipment_id?: string
+          id?: string
+          is_active?: boolean
+          purchased_at?: string
+          user_id?: string
+          void_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "player_equipment_equipment_id_fkey"
+            columns: ["equipment_id"]
+            isOneToOne: false
+            referencedRelation: "equipment_catalog"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "player_equipment_void_id_fkey"
+            columns: ["void_id"]
+            isOneToOne: false
+            referencedRelation: "voids"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       void_members: {
         Row: {
           id: string
@@ -333,6 +432,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      ensure_player_energy: { Args: never; Returns: number }
       user_has_void_access: {
         Args: { check_void_id: string }
         Returns: boolean

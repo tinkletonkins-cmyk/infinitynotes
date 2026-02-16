@@ -404,4 +404,18 @@
     50% { opacity: 0.7; }
     70% { opacity: 0.4; }
   }
+
+  /* Equipment tier glow effects */
+  .equipment-tier-2 {
+    box-shadow: 0 0 12px hsl(270 60% 40% / 0.3);
+  }
+
+  .equipment-tier-3 {
+    animation: tier3Glow 3s ease-in-out infinite;
+  }
+
+  @keyframes tier3Glow {
+    0%, 100% { box-shadow: 0 0 8px hsl(45 90% 55% / 0.3), 0 0 20px hsl(270 60% 40% / 0.2); }
+    50% { box-shadow: 0 0 16px hsl(45 90% 55% / 0.5), 0 0 30px hsl(270 60% 40% / 0.4); }
+  }
 }
