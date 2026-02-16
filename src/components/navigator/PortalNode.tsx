@@ -96,7 +96,7 @@ export function PortalNode({
           <div
             className="absolute inset-0 portal-spin"
             style={{
-              borderRadius: '50% !important',
+              borderRadius: '50%',
               background: `conic-gradient(
                 from 0deg,
                 hsl(270 80% 60% / 0.8),
@@ -116,7 +116,7 @@ export function PortalNode({
           <div
             className="absolute inset-0 portal-flicker"
             style={{
-              borderRadius: '50% !important',
+              borderRadius: '50%',
               border: '1.5px dashed hsl(270 30% 30% / 0.6)',
             }}
           />
@@ -126,7 +126,7 @@ export function PortalNode({
         <motion.div
           className="absolute inset-[3px]"
           style={{
-            borderRadius: '50% !important',
+            borderRadius: '50%',
             background: isLocked
               ? 'radial-gradient(circle, hsl(270 20% 12%) 0%, hsl(270 15% 6%) 100%)'
               : `radial-gradient(circle, hsl(270 60% 35%) 0%, hsl(260 50% 18%) 60%, hsl(270 40% 8%) 100%)`,
@@ -151,7 +151,7 @@ export function PortalNode({
             <div
               className="absolute inset-[2px] portal-spin"
               style={{
-                borderRadius: '50% !important',
+                borderRadius: '50%',
                 background: `conic-gradient(
                   from 90deg,
                   hsl(270 50% 30% / 0.6),
@@ -185,7 +185,7 @@ export function PortalNode({
                 style={{
                   width: 3,
                   height: 3,
-                  borderRadius: '50% !important',
+                  borderRadius: '50%',
                   backgroundColor: 'hsl(270 80% 70%)',
                   top: '50%',
                   left: '50%',
