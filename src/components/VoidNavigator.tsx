@@ -1,4 +1,4 @@
-import React, { useMemo, useEffect, useCallback } from 'react';
+import React, { useMemo, useEffect, useCallback, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Void } from '@/hooks/useVoids';
 import { CosmicDebris } from './navigator/CosmicDebris';
@@ -16,29 +16,29 @@ interface VoidNavigatorProps {
 
 // Prime constellation fixed positions (relative to center, scaled by viewport)
 const PRIME_CONSTELLATION = [
-  { index: 0, offsetX: -0.25, offsetY: 0 },    // Void 1 (left center)
-  { index: 1, offsetX: 0, offsetY: 0 },          // Void 2 (center)
-  { index: 2, offsetX: -0.12, offsetY: -0.15 },  // Void 3 (upper left)
-  { index: 3, offsetX: 0.12, offsetY: -0.15 },   // Void 4 (upper right)
-  { index: 4, offsetX: 0.25, offsetY: 0 },        // Void 5 (right center)
-  { index: 5, offsetX: -0.12, offsetY: 0.15 },   // Void 6 (lower left)
-  { index: 6, offsetX: 0.12, offsetY: 0.15 },    // Void 7 (lower right)
-  { index: 7, offsetX: 0, offsetY: 0.28 },        // Void 8 (below center)
-  { index: 8, offsetX: -0.08, offsetY: 0.40 },   // Void 9 (bottom left)
-  { index: 9, offsetX: 0.12, offsetY: 0.40 },    // Void 10 (bottom right)
+  { index: 0, offsetX: -0.25, offsetY: 0 },
+  { index: 1, offsetX: 0, offsetY: 0 },
+  { index: 2, offsetX: -0.12, offsetY: -0.15 },
+  { index: 3, offsetX: 0.12, offsetY: -0.15 },
+  { index: 4, offsetX: 0.25, offsetY: 0 },
+  { index: 5, offsetX: -0.12, offsetY: 0.15 },
+  { index: 6, offsetX: 0.12, offsetY: 0.15 },
+  { index: 7, offsetX: 0, offsetY: 0.28 },
+  { index: 8, offsetX: -0.08, offsetY: 0.40 },
+  { index: 9, offsetX: 0.12, offsetY: 0.40 },
 ];
 
 // Edges matching the user's constellation diagram
 const PRIME_EDGES: [number, number][] = [
-  [0, 1], [0, 2], [0, 5],  // Void 1 connects to 2, 3, 6
-  [1, 4],                    // Void 2 connects to 5
-  [2, 3],                    // Void 3 connects to 4
-  [3, 4],                    // Void 4 connects to 5
-  [5, 6],                    // Void 6 connects to 7
-  [6, 4],                    // Void 7 connects to 5
-  [5, 7],                    // Void 6 connects to 8 (via index 5 -> index 7)
-  [7, 8],                    // Void 8 connects to 9
-  [8, 9],                    // Void 9 connects to 10
+  [0, 1], [0, 2], [0, 5],
+  [1, 4],
+  [2, 3],
+  [3, 4],
+  [5, 6],
+  [6, 4],
+  [5, 7],
+  [7, 8],
+  [8, 9],
 ];
 
 interface LayoutNode {
@@ -61,7 +61,6 @@ function useNodeLayout(voids: Void[], w: number, h: number): LayoutNode[] {
 
     const nodes: LayoutNode[] = [];
 
-    // Place prime voids in constellation
     primeVoids.forEach((v, i) => {
       const pos = PRIME_CONSTELLATION[i];
       if (!pos) return;
@@ -75,7 +74,6 @@ function useNodeLayout(voids: Void[], w: number, h: number): LayoutNode[] {
       });
     });
 
-    // Non-prime voids in outer ring
     const outerRadius = scale * 0.42;
     nonPrimeVoids.forEach((v, i) => {
       const angle = (i / Math.max(nonPrimeVoids.length, 1)) * Math.PI * 2 - Math.PI / 2;
@@ -93,23 +91,27 @@ function useNodeLayout(voids: Void[], w: number, h: number): LayoutNode[] {
   }, [voids, w, h]);
 }
 
-// Build all connection lines
-function useConnections(nodes: LayoutNode[]) {
+interface ConnectionLine {
+  x1: number; y1: number; x2: number; y2: number;
+  bright: boolean;
+  sourceId: string | null;
+  targetId: string | null;
+}
+
+function useConnections(nodes: LayoutNode[]): ConnectionLine[] {
   return useMemo(() => {
-    const lines: { x1: number; y1: number; x2: number; y2: number; bright: boolean }[] = [];
+    const lines: ConnectionLine[] = [];
     const primeNodes = nodes.filter(n => n.isPrime);
     const nonPrimeNodes = nodes.filter(n => !n.isPrime);
 
-    // Prime-to-prime edges from constellation
     for (const [a, b] of PRIME_EDGES) {
       const na = primeNodes.find(n => n.primeIndex === a);
       const nb = primeNodes.find(n => n.primeIndex === b);
       if (na && nb) {
-        lines.push({ x1: na.x, y1: na.y, x2: nb.x, y2: nb.y, bright: true });
+        lines.push({ x1: na.x, y1: na.y, x2: nb.x, y2: nb.y, bright: true, sourceId: na.id, targetId: nb.id });
       }
     }
 
-    // Non-prime voids connect to nearest prime
     for (const np of nonPrimeNodes) {
       let nearest = primeNodes[0];
       let minDist = Infinity;
@@ -118,12 +120,22 @@ function useConnections(nodes: LayoutNode[]) {
         if (d < minDist) { minDist = d; nearest = p; }
       }
       if (nearest) {
-        lines.push({ x1: np.x, y1: np.y, x2: nearest.x, y2: nearest.y, bright: false });
+        lines.push({ x1: np.x, y1: np.y, x2: nearest.x, y2: nearest.y, bright: false, sourceId: np.id, targetId: nearest.id });
       }
     }
 
     return lines;
   }, [nodes]);
+}
+
+// Get all node IDs directly connected to a given node
+function getNeighborIds(nodeId: string | null, connections: ConnectionLine[]): Set<string | null> {
+  const neighbors = new Set<string | null>();
+  for (const c of connections) {
+    if (c.sourceId === nodeId) neighbors.add(c.targetId);
+    if (c.targetId === nodeId) neighbors.add(c.sourceId);
+  }
+  return neighbors;
 }
 
 export function VoidNavigator({
@@ -140,6 +152,12 @@ export function VoidNavigator({
 
   const nodes = useNodeLayout(voids, w, h);
   const connectionLines = useConnections(nodes);
+  const [hoveredNodeId, setHoveredNodeId] = useState<string | null | undefined>(undefined);
+
+  const neighborIds = useMemo(() => {
+    if (hoveredNodeId === undefined) return null;
+    return getNeighborIds(hoveredNodeId, connectionLines);
+  }, [hoveredNodeId, connectionLines]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -148,9 +166,14 @@ export function VoidNavigator({
     return () => window.removeEventListener('keydown', handleKey);
   }, [isOpen, onClose]);
 
+  // Reset hover when navigator closes
+  useEffect(() => {
+    if (!isOpen) setHoveredNodeId(undefined);
+  }, [isOpen]);
+
   const isLocked = useCallback(
     (v: Void | null) => {
-      if (!v) return false; // public void
+      if (!v) return false;
       if (v.is_public) return false;
       if (v.owner_id === user?.id) return false;
       return true;
@@ -174,6 +197,21 @@ export function VoidNavigator({
     [voidNoteCounts]
   );
 
+  // Determine line visual state based on hover
+  const getLineState = useCallback((line: ConnectionLine) => {
+    if (hoveredNodeId === undefined) return 'idle';
+    if (line.sourceId === hoveredNodeId || line.targetId === hoveredNodeId) return 'active';
+    return 'dimmed';
+  }, [hoveredNodeId]);
+
+  // Determine node visual state based on hover
+  const getNodeHighlight = useCallback((nodeId: string | null) => {
+    if (hoveredNodeId === undefined) return 'idle';
+    if (nodeId === hoveredNodeId) return 'self';
+    if (neighborIds?.has(nodeId)) return 'neighbor';
+    return 'dimmed';
+  }, [hoveredNodeId, neighborIds]);
+
   return (
     <AnimatePresence>
       {isOpen && (
@@ -184,27 +222,102 @@ export function VoidNavigator({
           exit={{ opacity: 0 }}
           transition={{ duration: 0.6 }}
           onClick={onClose}
+          onMouseLeave={() => setHoveredNodeId(undefined)}
         >
-          {/* Cosmic debris layer */}
           <CosmicDebris width={w} height={h} />
 
-          {/* SVG connection lines */}
+          {/* SVG constellation threads */}
           <svg className="absolute inset-0 w-full h-full pointer-events-none" style={{ zIndex: 2 }}>
-            {connectionLines.map((line, i) => (
-              <motion.line
-                key={i}
-                x1={line.x1}
-                y1={line.y1}
-                x2={line.x2}
-                y2={line.y2}
-                stroke={line.bright ? 'rgba(139, 92, 246, 0.25)' : 'rgba(139, 92, 246, 0.12)'}
-                strokeWidth={line.bright ? 1.5 : 1}
-                strokeDasharray="6 4"
-                initial={{ pathLength: 0, opacity: 0 }}
-                animate={{ pathLength: 1, opacity: 1 }}
-                transition={{ duration: 1, delay: 0.3 + i * 0.03 }}
-              />
-            ))}
+            <defs>
+              {/* Glow filter for threads */}
+              <filter id="thread-glow" x="-50%" y="-50%" width="200%" height="200%">
+                <feGaussianBlur in="SourceGraphic" stdDeviation="3" result="blur" />
+                <feMerge>
+                  <feMergeNode in="blur" />
+                  <feMergeNode in="SourceGraphic" />
+                </feMerge>
+              </filter>
+              <filter id="thread-glow-bright" x="-50%" y="-50%" width="200%" height="200%">
+                <feGaussianBlur in="SourceGraphic" stdDeviation="5" result="blur" />
+                <feMerge>
+                  <feMergeNode in="blur" />
+                  <feMergeNode in="blur" />
+                  <feMergeNode in="SourceGraphic" />
+                </feMerge>
+              </filter>
+            </defs>
+
+            {connectionLines.map((line, i) => {
+              const state = getLineState(line);
+              const gradientId = `thread-fade-${i}`;
+              const dx = line.x2 - line.x1;
+              const dy = line.y2 - line.y1;
+              const len = Math.hypot(dx, dy);
+              // Fade endpoints: start at 8% in, end at 92%
+              const fadeIn = 0.08;
+              const fadeOut = 0.92;
+
+              const baseOpacity = line.bright ? 0.18 : 0.08;
+              const activeOpacity = line.bright ? 0.55 : 0.4;
+              const dimmedOpacity = 0.03;
+
+              const opacity = state === 'active' ? activeOpacity
+                : state === 'dimmed' ? dimmedOpacity
+                : baseOpacity;
+
+              const filterRef = state === 'active' ? 'url(#thread-glow-bright)'
+                : 'url(#thread-glow)';
+
+              return (
+                <g key={i}>
+                  <defs>
+                    <linearGradient id={gradientId} x1={line.x1} y1={line.y1} x2={line.x2} y2={line.y2} gradientUnits="userSpaceOnUse">
+                      <stop offset="0%" stopColor="hsl(270 80% 60%)" stopOpacity="0" />
+                      <stop offset={`${fadeIn * 100}%`} stopColor="hsl(270 80% 60%)" stopOpacity="1" />
+                      <stop offset="50%" stopColor="hsl(280 70% 70%)" stopOpacity="1" />
+                      <stop offset={`${fadeOut * 100}%`} stopColor="hsl(270 80% 60%)" stopOpacity="1" />
+                      <stop offset="100%" stopColor="hsl(270 80% 60%)" stopOpacity="0" />
+                    </linearGradient>
+                  </defs>
+                  {/* Glow under-layer */}
+                  <motion.line
+                    x1={line.x1} y1={line.y1} x2={line.x2} y2={line.y2}
+                    stroke={`url(#${gradientId})`}
+                    strokeWidth={state === 'active' ? 3 : line.bright ? 1.5 : 1}
+                    filter={filterRef}
+                    initial={{ pathLength: 0, opacity: 0 }}
+                    animate={{
+                      pathLength: 1,
+                      opacity: opacity,
+                    }}
+                    transition={{
+                      pathLength: { duration: 1.2, delay: 0.3 + i * 0.03 },
+                      opacity: { duration: 0.4 },
+                    }}
+                  />
+                  {/* Pulse traveling light (only for prime-to-prime idle/active) */}
+                  {line.bright && state !== 'dimmed' && (
+                    <motion.circle
+                      r={state === 'active' ? 2.5 : 1.5}
+                      fill="hsl(280 80% 80%)"
+                      filter="url(#thread-glow)"
+                      initial={{ opacity: 0 }}
+                      animate={{
+                        cx: [line.x1, line.x2],
+                        cy: [line.y1, line.y2],
+                        opacity: [0, state === 'active' ? 0.8 : 0.3, 0],
+                      }}
+                      transition={{
+                        duration: 4 + (i % 3),
+                        repeat: Infinity,
+                        delay: i * 0.5,
+                        ease: 'linear',
+                      }}
+                    />
+                  )}
+                </g>
+              );
+            })}
           </svg>
 
           {/* Title */}
@@ -226,6 +339,7 @@ export function VoidNavigator({
             const locked = isLocked(node.void_);
             const isCurrent = node.id === currentVoidId;
             const isPublicCenter = node.id === null;
+            const highlight = getNodeHighlight(node.id);
 
             return (
               <div
@@ -245,6 +359,9 @@ export function VoidNavigator({
                   label={isPublicCenter ? 'Public Void' : node.void_?.name || 'Unknown'}
                   glowIntensity={getGlow(node.id)}
                   index={i}
+                  highlight={highlight}
+                  onHover={() => setHoveredNodeId(node.id)}
+                  onHoverEnd={() => setHoveredNodeId(undefined)}
                   onClick={(e) => {
                     e.stopPropagation();
                     onSelectVoid(node.id);

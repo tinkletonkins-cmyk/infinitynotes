@@ -2,6 +2,8 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { Globe, Lock } from 'lucide-react';
 
+type HighlightState = 'idle' | 'self' | 'neighbor' | 'dimmed';
+
 interface PortalNodeProps {
   size: number;
   isLocked: boolean;
@@ -14,6 +16,9 @@ interface PortalNodeProps {
   label: string;
   glowIntensity: number;
   index: number;
+  highlight?: HighlightState;
+  onHover?: () => void;
+  onHoverEnd?: () => void;
   onClick: (e: React.MouseEvent) => void;
 }
 
@@ -29,15 +34,26 @@ export function PortalNode({
   label,
   glowIntensity,
   index,
+  highlight = 'idle',
+  onHover,
+  onHoverEnd,
   onClick,
 }: PortalNodeProps) {
   const tierScale = 0.8 + visualTier * 0.15;
   const portalSize = isPrime ? size * tierScale : size;
   const ringWidth = isPrime ? 1 + visualTier * 0.5 : 1.5;
 
+  const isDimmed = highlight === 'dimmed';
+  const isHighlighted = highlight === 'self' || highlight === 'neighbor';
+
   const unlockedGlow = `
     0 0 ${glowIntensity + 8}px ${(glowIntensity + 8) / 2}px hsl(270 80% 60% / 0.5),
     0 0 ${(glowIntensity + 8) * 2}px hsl(270 80% 60% / 0.2)
+  `;
+
+  const highlightedGlow = `
+    0 0 ${glowIntensity + 16}px ${(glowIntensity + 16) / 2}px hsl(270 80% 70% / 0.7),
+    0 0 ${(glowIntensity + 16) * 2}px hsl(270 80% 60% / 0.35)
   `;
 
   const lockedGlow = '0 0 4px 1px hsl(270 30% 30% / 0.3)';
@@ -46,12 +62,20 @@ export function PortalNode({
     0 0 ${(glowIntensity + 12) * 2}px hsl(270 80% 70% / 0.3)
   `;
 
+  const resolvedGlow = isCurrent ? currentGlow
+    : isLocked ? lockedGlow
+    : isHighlighted ? highlightedGlow
+    : unlockedGlow;
+
   return (
     <motion.div
       className="absolute cursor-pointer flex flex-col items-center"
       style={{ transform: 'translate(-50%, -50%)' }}
       initial={{ scale: 0, opacity: 0 }}
-      animate={{ scale: 1, opacity: 1 }}
+      animate={{
+        scale: 1,
+        opacity: isDimmed ? 0.3 : 1,
+      }}
       exit={{ scale: 0, opacity: 0 }}
       transition={{
         duration: 0.5,
@@ -59,8 +83,11 @@ export function PortalNode({
         type: 'spring',
         stiffness: 200,
         damping: 20,
+        opacity: { duration: 0.3, delay: 0 },
       }}
       onClick={onClick}
+      onMouseEnter={onHover}
+      onMouseLeave={onHoverEnd}
     >
       {/* Portal container */}
       <div className="relative" style={{ width: portalSize, height: portalSize }}>
@@ -103,7 +130,7 @@ export function PortalNode({
             background: isLocked
               ? 'radial-gradient(circle, hsl(270 20% 12%) 0%, hsl(270 15% 6%) 100%)'
               : `radial-gradient(circle, hsl(270 60% 35%) 0%, hsl(260 50% 18%) 60%, hsl(270 40% 8%) 100%)`,
-            boxShadow: isCurrent ? currentGlow : isLocked ? lockedGlow : unlockedGlow,
+            boxShadow: resolvedGlow,
             border: isCurrent
               ? '2px solid hsl(0 0% 100%)'
               : 'none',
@@ -193,7 +220,7 @@ export function PortalNode({
       <motion.span
         className="mt-2 text-[10px] font-mono uppercase tracking-wider text-purple-300/50 whitespace-nowrap max-w-[120px] truncate text-center"
         initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
+        animate={{ opacity: isDimmed ? 0.2 : 1 }}
         transition={{ delay: 0.5 + index * 0.04 }}
       >
         {label}
