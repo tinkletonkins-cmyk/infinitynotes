@@ -752,13 +752,7 @@ function VoidBoardContent() {
         <Plus size={32} strokeWidth={2} />
       </button>
 
-      {/* Board Navigator */}
-      <BoardNavigator
-        zoom={scale}
-        onRecenter={recenter}
-        onZoomIn={zoomIn}
-        onZoomOut={zoomOut}
-      />
+      {/* Board Navigator is now rendered inside the footer */}
 
       {/* Board History Slider */}
       <BoardHistorySlider
@@ -771,9 +765,19 @@ function VoidBoardContent() {
       <SyncIndicator isSyncing={isSyncing} lastSyncTime={lastSyncTime} />
 
       {/* Footer */}
-      <footer className="fixed bottom-0 left-0 p-4 text-xs text-muted-foreground uppercase tracking-wider">
-        Notes: {notes.length} | Connections: {connections.length}
-        {user && <span> | {user.email}</span>}
+      <footer className="fixed bottom-0 left-0 p-4 text-xs text-muted-foreground uppercase tracking-wider z-[102]">
+        <div className="mb-2">
+          <BoardNavigator
+            zoom={scale}
+            onRecenter={recenter}
+            onZoomIn={zoomIn}
+            onZoomOut={zoomOut}
+          />
+        </div>
+        <div>
+          Notes: {notes.length} | Connections: {connections.length}
+          {user && <span> | {user.email}</span>}
+        </div>
       </footer>
     </div>
   );
