@@ -33,6 +33,8 @@ import { BoardHistorySlider } from './BoardHistorySlider';
 import { LiveCursors, getCursorColor } from './LiveCursors';
 import { VoidPulse } from './VoidPulse';
 import { SyncIndicator } from './SyncIndicator';
+import { VoidNavigator } from './VoidNavigator';
+import { useVoidNoteCounts } from '@/hooks/useVoidNoteCounts';
 
 const NOTE_WIDTH = 256;
 const NOTE_HEIGHT = 200;
@@ -151,6 +153,11 @@ function VoidBoardContent() {
   const [showSuggestionsModal, setShowSuggestionsModal] = useState(false);
   const [drawingMode, setDrawingMode] = useState(false);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [showNavigator, setShowNavigator] = useState(false);
+
+  // Void note counts for navigator glow
+  const voidIds = useMemo(() => voids.map(v => v.id), [voids]);
+  const voidNoteCounts = useVoidNoteCounts(voidIds);
 
   // Show welcome intro for non-signed-in users
   useEffect(() => {
@@ -482,6 +489,18 @@ function VoidBoardContent() {
   return (
     <div className={`void-board relative ${boardThemeClass}`}>
       {/* Modals */}
+      <VoidNavigator
+        isOpen={showNavigator}
+        onClose={() => setShowNavigator(false)}
+        voids={voids}
+        currentVoidId={currentVoidId}
+        voidNoteCounts={voidNoteCounts}
+        onSelectVoid={(id) => {
+          setCurrentVoidId(id);
+          setShowNavigator(false);
+        }}
+        user={user}
+      />
       <WelcomeIntro visible={showWelcome} onDismiss={handleDismissWelcome} />
       <AuthModal 
         isOpen={showAuthModal} 
@@ -758,6 +777,7 @@ function VoidBoardContent() {
             onRecenter={recenter}
             onZoomIn={zoomIn}
             onZoomOut={zoomOut}
+            onOpenNavigator={() => setShowNavigator(true)}
           />
         </div>
         <div>
