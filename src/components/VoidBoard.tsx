@@ -608,20 +608,6 @@ function VoidBoardContent() {
         </div>
       )}
 
-      {/* Mode toggle and theme picker */}
-      <div className="mode-toggle">
-        <span className={`mode-toggle-label ${boardTheme === 'void' ? 'opacity-100' : 'opacity-50'}`}>
-          VOID
-        </span>
-        <Switch
-          checked={boardTheme === 'board'}
-          onCheckedChange={(checked) => setBoardTheme(checked ? 'board' : 'void')}
-          className="data-[state=checked]:bg-foreground data-[state=unchecked]:bg-muted"
-        />
-        <span className={`mode-toggle-label ${boardTheme === 'board' ? 'opacity-100' : 'opacity-50'}`}>
-          BOARD
-        </span>
-      </div>
 
       {/* Board Theme Picker */}
       <div className="fixed top-32 right-4 z-50">
