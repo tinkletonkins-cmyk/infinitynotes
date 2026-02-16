@@ -610,14 +610,14 @@ function VoidBoardContent() {
 
 
       {/* Board Theme Picker */}
-      <div className="fixed top-32 right-4 z-50">
+      <div className="fixed top-20 right-4 z-50">
         <BoardThemePicker currentTheme={boardTheme} onThemeSelect={setBoardTheme} />
       </div>
 
       {/* Drawing mode toggle */}
       <button
         onClick={() => setDrawingMode(!drawingMode)}
-        className={`fixed top-44 right-4 z-50 flex items-center gap-2 px-3 py-2 border border-foreground transition-colors ${drawingMode ? 'bg-foreground text-background' : 'bg-background hover:bg-foreground hover:text-background'}`}
+        className={`fixed top-32 right-4 z-50 flex items-center gap-2 px-3 py-2 border border-foreground transition-colors ${drawingMode ? 'bg-foreground text-background' : 'bg-background hover:bg-foreground hover:text-background'}`}
         title={drawingMode ? 'Exit drawing mode' : 'Enter drawing mode'}
       >
         <Pencil size={14} />
@@ -627,7 +627,7 @@ function VoidBoardContent() {
       {/* Constellation mode toggle */}
       <button
         onClick={() => setShowConstellation(!showConstellation)}
-        className={`fixed top-56 right-4 z-50 flex items-center gap-2 px-3 py-2 border border-foreground transition-colors ${showConstellation ? 'bg-foreground text-background' : 'bg-background hover:bg-foreground hover:text-background'}`}
+        className={`fixed top-44 right-4 z-50 flex items-center gap-2 px-3 py-2 border border-foreground transition-colors ${showConstellation ? 'bg-foreground text-background' : 'bg-background hover:bg-foreground hover:text-background'}`}
         title={showConstellation ? 'Exit stargazing mode' : 'Enter stargazing mode'}
       >
         <Sparkles size={14} />
@@ -638,7 +638,7 @@ function VoidBoardContent() {
       <button
         onClick={handleGenerateSummary}
         disabled={isLoadingSummary || notes.length === 0}
-        className="fixed top-68 right-4 z-50 flex items-center gap-2 px-3 py-2 border border-foreground bg-background hover:bg-foreground hover:text-background transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        className="fixed top-56 right-4 z-50 flex items-center gap-2 px-3 py-2 border border-foreground bg-background hover:bg-foreground hover:text-background transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         title="Generate poetic void summary"
       >
         <BookOpen size={14} />
@@ -649,7 +649,7 @@ function VoidBoardContent() {
       <button
         onClick={handleSuggestConnections}
         disabled={isLoadingConnections || notes.length < 2}
-        className="fixed top-80 right-4 z-50 flex items-center gap-2 px-3 py-2 border border-foreground bg-background hover:bg-foreground hover:text-background transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        className="fixed top-68 right-4 z-50 flex items-center gap-2 px-3 py-2 border border-foreground bg-background hover:bg-foreground hover:text-background transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         title="AI suggests note connections"
       >
         <Zap size={14} />
