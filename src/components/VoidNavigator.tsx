@@ -1,7 +1,8 @@
 import React, { useMemo, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Globe } from 'lucide-react';
 import { Void } from '@/hooks/useVoids';
+import { CosmicDebris } from './navigator/CosmicDebris';
+import { PortalNode } from './navigator/PortalNode';
 
 interface VoidNavigatorProps {
   isOpen: boolean;
@@ -13,64 +14,116 @@ interface VoidNavigatorProps {
   user: { id: string; email?: string } | null;
 }
 
-// Generate stable positions for void nodes in circular layout
-function useNodeLayout(voids: Void[], containerWidth: number, containerHeight: number) {
+// Prime constellation fixed positions (relative to center, scaled by viewport)
+const PRIME_CONSTELLATION = [
+  { index: 0, offsetX: -0.25, offsetY: 0 },    // Void 1 (left center)
+  { index: 1, offsetX: 0, offsetY: 0 },          // Void 2 (center)
+  { index: 2, offsetX: -0.12, offsetY: -0.15 },  // Void 3 (upper left)
+  { index: 3, offsetX: 0.12, offsetY: -0.15 },   // Void 4 (upper right)
+  { index: 4, offsetX: 0.25, offsetY: 0 },        // Void 5 (right center)
+  { index: 5, offsetX: -0.12, offsetY: 0.15 },   // Void 6 (lower left)
+  { index: 6, offsetX: 0.12, offsetY: 0.15 },    // Void 7 (lower right)
+  { index: 7, offsetX: 0, offsetY: 0.28 },        // Void 8 (below center)
+  { index: 8, offsetX: -0.08, offsetY: 0.40 },   // Void 9 (bottom left)
+  { index: 9, offsetX: 0.12, offsetY: 0.40 },    // Void 10 (bottom right)
+];
+
+// Edges matching the user's constellation diagram
+const PRIME_EDGES: [number, number][] = [
+  [0, 1], [0, 2], [0, 5],  // Void 1 connects to 2, 3, 6
+  [1, 4],                    // Void 2 connects to 5
+  [2, 3],                    // Void 3 connects to 4
+  [3, 4],                    // Void 4 connects to 5
+  [5, 6],                    // Void 6 connects to 7
+  [6, 4],                    // Void 7 connects to 5
+  [5, 7],                    // Void 6 connects to 8 (via index 5 -> index 7)
+  [7, 8],                    // Void 8 connects to 9
+  [8, 9],                    // Void 9 connects to 10
+];
+
+interface LayoutNode {
+  id: string | null;
+  x: number;
+  y: number;
+  void_: Void | null;
+  isPrime: boolean;
+  primeIndex: number;
+}
+
+function useNodeLayout(voids: Void[], w: number, h: number): LayoutNode[] {
   return useMemo(() => {
-    const centerX = containerWidth / 2;
-    const centerY = containerHeight / 2;
+    const cx = w / 2;
+    const cy = h / 2;
+    const scale = Math.min(w, h);
 
-    // Public void (null) always at center
-    const nodes: { id: string | null; x: number; y: number; void_: Void | null }[] = [
-      { id: null, x: centerX, y: centerY, void_: null },
-    ];
+    const primeVoids = voids.filter(v => v.is_prime).slice(0, 10);
+    const nonPrimeVoids = voids.filter(v => !v.is_prime);
 
-    const privateVoids = voids.filter(v => !v.is_public);
-    const publicVoids = voids.filter(v => v.is_public);
+    const nodes: LayoutNode[] = [];
 
-    // Public voids in inner ring
-    const innerRadius = Math.min(containerWidth, containerHeight) * 0.15;
-    publicVoids.forEach((v, i) => {
-      const angle = (i / Math.max(publicVoids.length, 1)) * Math.PI * 2 - Math.PI / 2;
+    // Place prime voids in constellation
+    primeVoids.forEach((v, i) => {
+      const pos = PRIME_CONSTELLATION[i];
+      if (!pos) return;
       nodes.push({
         id: v.id,
-        x: centerX + Math.cos(angle) * innerRadius + (Math.random() - 0.5) * 20,
-        y: centerY + Math.sin(angle) * innerRadius + (Math.random() - 0.5) * 20,
+        x: cx + pos.offsetX * scale,
+        y: cy + pos.offsetY * scale,
         void_: v,
+        isPrime: true,
+        primeIndex: i,
       });
     });
 
-    // Private voids in outer ring
-    const outerRadius = Math.min(containerWidth, containerHeight) * 0.3;
-    privateVoids.forEach((v, i) => {
-      const angle = (i / Math.max(privateVoids.length, 1)) * Math.PI * 2 - Math.PI / 2;
+    // Non-prime voids in outer ring
+    const outerRadius = scale * 0.42;
+    nonPrimeVoids.forEach((v, i) => {
+      const angle = (i / Math.max(nonPrimeVoids.length, 1)) * Math.PI * 2 - Math.PI / 2;
       nodes.push({
         id: v.id,
-        x: centerX + Math.cos(angle) * outerRadius + (Math.random() - 0.5) * 30,
-        y: centerY + Math.sin(angle) * outerRadius + (Math.random() - 0.5) * 30,
+        x: cx + Math.cos(angle) * outerRadius,
+        y: cy + Math.sin(angle) * outerRadius,
         void_: v,
+        isPrime: false,
+        primeIndex: -1,
       });
     });
 
     return nodes;
-  }, [voids, containerWidth, containerHeight]);
+  }, [voids, w, h]);
 }
 
-// Compute connections between voids sharing the same owner
-function useConnections(voids: Void[]) {
+// Build all connection lines
+function useConnections(nodes: LayoutNode[]) {
   return useMemo(() => {
-    const lines: { from: string; to: string }[] = [];
-    for (let i = 0; i < voids.length; i++) {
-      for (let j = i + 1; j < voids.length; j++) {
-        if (
-          voids[i].owner_id &&
-          voids[i].owner_id === voids[j].owner_id
-        ) {
-          lines.push({ from: voids[i].id, to: voids[j].id });
-        }
+    const lines: { x1: number; y1: number; x2: number; y2: number; bright: boolean }[] = [];
+    const primeNodes = nodes.filter(n => n.isPrime);
+    const nonPrimeNodes = nodes.filter(n => !n.isPrime);
+
+    // Prime-to-prime edges from constellation
+    for (const [a, b] of PRIME_EDGES) {
+      const na = primeNodes.find(n => n.primeIndex === a);
+      const nb = primeNodes.find(n => n.primeIndex === b);
+      if (na && nb) {
+        lines.push({ x1: na.x, y1: na.y, x2: nb.x, y2: nb.y, bright: true });
       }
     }
+
+    // Non-prime voids connect to nearest prime
+    for (const np of nonPrimeNodes) {
+      let nearest = primeNodes[0];
+      let minDist = Infinity;
+      for (const p of primeNodes) {
+        const d = Math.hypot(p.x - np.x, p.y - np.y);
+        if (d < minDist) { minDist = d; nearest = p; }
+      }
+      if (nearest) {
+        lines.push({ x1: np.x, y1: np.y, x2: nearest.x, y2: nearest.y, bright: false });
+      }
+    }
+
     return lines;
-  }, [voids]);
+  }, [nodes]);
 }
 
 export function VoidNavigator({
@@ -82,47 +135,43 @@ export function VoidNavigator({
   onSelectVoid,
   user,
 }: VoidNavigatorProps) {
-  const width = typeof window !== 'undefined' ? window.innerWidth : 1200;
-  const height = typeof window !== 'undefined' ? window.innerHeight : 800;
+  const w = typeof window !== 'undefined' ? window.innerWidth : 1200;
+  const h = typeof window !== 'undefined' ? window.innerHeight : 800;
 
-  const nodes = useNodeLayout(voids, width, height);
-  const connectionLines = useConnections(voids);
+  const nodes = useNodeLayout(voids, w, h);
+  const connectionLines = useConnections(nodes);
 
-  // Escape to close
   useEffect(() => {
     if (!isOpen) return;
-    const handleKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-    };
+    const handleKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
     window.addEventListener('keydown', handleKey);
     return () => window.removeEventListener('keydown', handleKey);
   }, [isOpen, onClose]);
 
-  const getNodeSize = useCallback(
-    (id: string | null) => {
-      const key = id ?? '__public__';
-      const count = voidNoteCounts[key] || 0;
-      if (count === 0) return 40;
-      return Math.min(40 + count * 4, 80);
+  const isLocked = useCallback(
+    (v: Void | null) => {
+      if (!v) return false; // public void
+      if (v.is_public) return false;
+      if (v.owner_id === user?.id) return false;
+      return true;
     },
-    [voidNoteCounts]
+    [user]
   );
 
-  const getGlowIntensity = useCallback(
+  const getGlow = useCallback(
     (id: string | null) => {
-      const key = id ?? '__public__';
-      const count = voidNoteCounts[key] || 0;
+      const count = voidNoteCounts[id ?? '__public__'] || 0;
       return Math.min(count * 3, 30);
     },
     [voidNoteCounts]
   );
 
-  const getNodePos = useCallback(
+  const getSize = useCallback(
     (id: string | null) => {
-      const node = nodes.find(n => n.id === id);
-      return node ? { x: node.x, y: node.y } : { x: 0, y: 0 };
+      const count = voidNoteCounts[id ?? '__public__'] || 0;
+      return count === 0 ? 44 : Math.min(44 + count * 4, 80);
     },
-    [nodes]
+    [voidNoteCounts]
   );
 
   return (
@@ -136,34 +185,32 @@ export function VoidNavigator({
           transition={{ duration: 0.6 }}
           onClick={onClose}
         >
-          {/* Star particles via CSS */}
+          {/* Cosmic debris layer */}
+          <CosmicDebris width={w} height={h} />
 
           {/* SVG connection lines */}
-          <svg className="absolute inset-0 w-full h-full pointer-events-none">
-            {connectionLines.map((line, i) => {
-              const from = getNodePos(line.from);
-              const to = getNodePos(line.to);
-              return (
-                <motion.line
-                  key={i}
-                  x1={from.x}
-                  y1={from.y}
-                  x2={to.x}
-                  y2={to.y}
-                  stroke="rgba(139, 92, 246, 0.15)"
-                  strokeWidth={1}
-                  strokeDasharray="6 4"
-                  initial={{ pathLength: 0, opacity: 0 }}
-                  animate={{ pathLength: 1, opacity: 1 }}
-                  transition={{ duration: 1, delay: 0.4 + i * 0.05 }}
-                />
-              );
-            })}
+          <svg className="absolute inset-0 w-full h-full pointer-events-none" style={{ zIndex: 2 }}>
+            {connectionLines.map((line, i) => (
+              <motion.line
+                key={i}
+                x1={line.x1}
+                y1={line.y1}
+                x2={line.x2}
+                y2={line.y2}
+                stroke={line.bright ? 'rgba(139, 92, 246, 0.25)' : 'rgba(139, 92, 246, 0.12)'}
+                strokeWidth={line.bright ? 1.5 : 1}
+                strokeDasharray="6 4"
+                initial={{ pathLength: 0, opacity: 0 }}
+                animate={{ pathLength: 1, opacity: 1 }}
+                transition={{ duration: 1, delay: 0.3 + i * 0.03 }}
+              />
+            ))}
           </svg>
 
           {/* Title */}
           <motion.div
-            className="absolute top-8 left-1/2 -translate-x-1/2 text-center z-10"
+            className="absolute top-8 left-1/2 -translate-x-1/2 text-center"
+            style={{ zIndex: 10 }}
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3 }}
@@ -173,109 +220,50 @@ export function VoidNavigator({
             </h2>
           </motion.div>
 
-          {/* Void Nodes */}
+          {/* Portal Nodes */}
           {nodes.map((node, i) => {
-            const size = getNodeSize(node.id);
-            const glow = getGlowIntensity(node.id);
+            const noteCount = voidNoteCounts[node.id ?? '__public__'] || 0;
+            const locked = isLocked(node.void_);
             const isCurrent = node.id === currentVoidId;
             const isPublicCenter = node.id === null;
-            const noteCount = voidNoteCounts[node.id ?? '__public__'] || 0;
 
             return (
-              <motion.div
+              <div
                 key={node.id ?? 'public'}
-                className="absolute cursor-pointer flex flex-col items-center"
-                style={{
-                  left: node.x,
-                  top: node.y,
-                  transform: 'translate(-50%, -50%)',
-                }}
-                initial={{ scale: 0, opacity: 0 }}
-                animate={{
-                  scale: 1,
-                  opacity: 1,
-                }}
-                exit={{ scale: 0, opacity: 0 }}
-                transition={{
-                  duration: 0.5,
-                  delay: 0.2 + i * 0.06,
-                  type: 'spring',
-                  stiffness: 200,
-                  damping: 20,
-                }}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onSelectVoid(node.id);
-                }}
+                className="absolute"
+                style={{ left: node.x, top: node.y, zIndex: 5 }}
               >
-                {/* Breathing animation wrapper */}
-                <motion.div
-                  animate={{
-                    scale: [1, 1.05, 1],
-                    opacity: noteCount > 0 ? [0.8, 1, 0.8] : [0.4, 0.5, 0.4],
+                <PortalNode
+                  size={getSize(node.id)}
+                  isLocked={locked}
+                  isCurrent={isCurrent}
+                  isPublicCenter={isPublicCenter}
+                  isPrime={node.isPrime}
+                  visualTier={node.void_?.visual_tier ?? 1}
+                  energyCost={node.void_?.energy_cost ?? 0}
+                  noteCount={noteCount}
+                  label={isPublicCenter ? 'Public Void' : node.void_?.name || 'Unknown'}
+                  glowIntensity={getGlow(node.id)}
+                  index={i}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onSelectVoid(node.id);
                   }}
-                  transition={{
-                    duration: 3 + Math.random() * 2,
-                    repeat: Infinity,
-                    ease: 'easeInOut',
-                  }}
-                >
-                  <div
-                    className="void-navigator-node"
-                    style={{
-                      width: size,
-                      height: size,
-                      borderRadius: '50%',
-                      background: noteCount > 0
-                        ? 'radial-gradient(circle, hsl(270 60% 40%) 0%, hsl(260 50% 20%) 100%)'
-                        : 'hsl(270 40% 12%)',
-                      boxShadow: glow > 0
-                        ? `0 0 ${glow}px ${glow / 2}px hsl(270 80% 60% / 0.5), 0 0 ${glow * 2}px hsl(270 80% 60% / 0.2)`
-                        : 'none',
-                      border: isCurrent
-                        ? '2px solid hsl(0 0% 100%)'
-                        : '1px solid hsl(270 40% 30% / 0.5)',
-                    }}
-                  >
-                    {isPublicCenter && (
-                      <div className="w-full h-full flex items-center justify-center">
-                        <Globe size={size * 0.4} className="text-purple-300/70" />
-                      </div>
-                    )}
-                  </div>
-                </motion.div>
-
-                {/* Label */}
-                <motion.span
-                  className="mt-2 text-[10px] font-mono uppercase tracking-wider text-purple-300/50 whitespace-nowrap max-w-[100px] truncate text-center"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ delay: 0.5 + i * 0.06 }}
-                >
-                  {isPublicCenter
-                    ? 'Public Void'
-                    : node.void_?.name || 'Unknown'}
-                </motion.span>
-
-                {/* Note count badge */}
-                {noteCount > 0 && (
-                  <span className="text-[9px] font-mono text-purple-400/40 mt-0.5">
-                    {noteCount} note{noteCount !== 1 ? 's' : ''}
-                  </span>
-                )}
-              </motion.div>
+                />
+              </div>
             );
           })}
 
           {/* Hint */}
           <motion.div
             className="absolute bottom-8 left-1/2 -translate-x-1/2 text-center"
+            style={{ zIndex: 10 }}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 1 }}
           >
             <p className="text-[10px] font-mono uppercase tracking-widest text-purple-300/30">
-              Click a void to enter · Esc to return
+              Click a portal to enter · Esc to return
             </p>
           </motion.div>
         </motion.div>

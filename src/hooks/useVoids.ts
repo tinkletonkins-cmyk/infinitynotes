@@ -8,6 +8,9 @@ export interface Void {
   is_public: boolean;
   invite_code: string | null;
   created_at: string;
+  energy_cost: number;
+  visual_tier: number;
+  is_prime: boolean;
 }
 
 export interface VoidMember {
