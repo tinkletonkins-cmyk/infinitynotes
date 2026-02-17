@@ -774,7 +774,7 @@ function VoidBoardContent() {
 
       {/* Equipment Shop button */}
       <button
-        onClick={() => user ? setShowEquipmentShop(true) : setShowAuthModal(true)}
+        onClick={() => setShowEquipmentShop(true)}
         className="fixed top-80 right-4 z-50 flex items-center gap-2 px-3 py-2 border border-foreground bg-background hover:bg-foreground hover:text-background transition-colors"
         title="Equipment Bay"
       >

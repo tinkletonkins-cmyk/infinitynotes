@@ -1,12 +1,13 @@
 import { useMemo } from 'react';
-import { useEquipment } from './useEquipment';
+import { useEquipmentUnified } from './useEquipmentUnified';
 
 /**
  * Returns a Set of active effect_keys for the current void.
  * Equipment must be owned AND installed in the current void to be active.
+ * Works for both logged-in and guest users.
  */
 export function useActiveEffects(userId: string | null, currentVoidId: string | null) {
-  const { owned, catalog } = useEquipment(userId, currentVoidId);
+  const { owned, catalog } = useEquipmentUnified(userId, currentVoidId);
 
   const activeEffects = useMemo(() => {
     const effects = new Set<string>();

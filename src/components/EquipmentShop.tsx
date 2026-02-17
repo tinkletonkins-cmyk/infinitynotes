@@ -3,7 +3,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, Zap, Star } from 'lucide-react';
 import { icons } from 'lucide-react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { useEquipment, EquipmentItem } from '@/hooks/useEquipment';
+import { EquipmentItem } from '@/hooks/useEquipment';
+import { useEquipmentUnified } from '@/hooks/useEquipmentUnified';
 import { EquipmentInventory } from './EquipmentInventory';
 import { useToast } from '@/hooks/use-toast';
 
@@ -98,7 +99,7 @@ function EquipmentCard({
 }
 
 export function EquipmentShop({ isOpen, onClose, userId, currentVoidId }: EquipmentShopProps) {
-  const { catalog, owned, energy, isLoading, purchaseEquipment, isPurchasing, installEquipment, uninstallEquipment } = useEquipment(userId, currentVoidId);
+  const { catalog, owned, energy, isLoading, purchaseEquipment, isPurchasing, installEquipment, uninstallEquipment } = useEquipmentUnified(userId, currentVoidId);
   const { toast } = useToast();
 
   const ownedIds = useMemo(() => new Set(owned.map(o => o.equipment_id)), [owned]);
