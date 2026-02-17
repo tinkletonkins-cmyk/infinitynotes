@@ -36,6 +36,8 @@ import { SyncIndicator } from './SyncIndicator';
 import { VoidNavigator } from './VoidNavigator';
 import { useVoidNoteCounts } from '@/hooks/useVoidNoteCounts';
 import { EquipmentShop } from './EquipmentShop';
+import { useActiveEffects } from '@/hooks/useActiveEffects';
+import { EquipmentEffects } from './EquipmentEffects';
 
 const NOTE_WIDTH = 256;
 const NOTE_HEIGHT = 200;
@@ -110,6 +112,9 @@ function VoidBoardContent() {
   // Void Pulse - activity-based background effects
   const { activityLevel, ripples, pulseNoteCreated, pulseReaction, pulseTyping } = useVoidPulse(currentVoidId);
   
+  // Active equipment effects for the current void
+  const activeEffects = useActiveEffects(user?.id ?? null, currentVoidId);
+  
   // Broadcast cursor position on mouse move
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
@@ -165,6 +170,61 @@ function VoidBoardContent() {
   useEffect(() => {
     setShowWelcome(!user);
   }, [user]);
+
+  // gravity_anchor effect: periodically pull connected notes closer
+  useEffect(() => {
+    if (!activeEffects.has('gravity_anchor') || connections.length === 0) return;
+    const interval = setInterval(() => {
+      for (const conn of connections) {
+        const fromNote = notes.find(n => n.id === conn.from_note_id);
+        const toNote = notes.find(n => n.id === conn.to_note_id);
+        if (!fromNote || !toNote) continue;
+        const dx = toNote.position.x - fromNote.position.x;
+        const dy = toNote.position.y - fromNote.position.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist > 200 && dist < 800) {
+          const pull = 0.02;
+          updateNote(toNote.id, {
+            position: {
+              x: toNote.position.x - dx * pull,
+              y: toNote.position.y - dy * pull,
+            },
+          });
+        }
+      }
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [activeEffects, connections, notes, updateNote]);
+
+  // resonance_lens effect: auto-suggest connections when 5+ notes exist
+  useEffect(() => {
+    if (!activeEffects.has('resonance_lens') || notes.length < 5) return;
+    // Trigger connection suggestions automatically once
+    if (!showSuggestionsModal && connectionSuggestions.length === 0 && !isLoadingConnections) {
+      suggestConnections(notes);
+    }
+  }, [activeEffects, notes.length]);
+
+  // tag_engine effect: auto-tag new notes based on content keywords
+  useEffect(() => {
+    if (!activeEffects.has('tag_engine')) return;
+    const KEYWORD_TAGS: Record<string, string[]> = {
+      'idea': ['💡 idea'], 'todo': ['📋 todo'], 'bug': ['🐛 bug'],
+      'question': ['❓ question'], 'important': ['⭐ important'],
+      'done': ['✅ done'], 'link': ['🔗 link'], 'meeting': ['📅 meeting'],
+    };
+    for (const note of notes) {
+      if ((note.tags || []).length > 0) continue; // already tagged
+      const text = note.text.toLowerCase();
+      const autoTags: string[] = [];
+      for (const [keyword, tags] of Object.entries(KEYWORD_TAGS)) {
+        if (text.includes(keyword)) autoTags.push(...tags);
+      }
+      if (autoTags.length > 0) {
+        updateNote(note.id, { tags: autoTags });
+      }
+    }
+  }, [activeEffects, notes, updateNote]);
   
   // Modal states
   const [showAuthModal, setShowAuthModal] = useState(false);
@@ -290,8 +350,16 @@ function VoidBoardContent() {
     droppedId: string,
     newPosition: { x: number; y: number }
   ) => {
+    // memory_grid effect: snap notes to a 40px grid
+    if (activeEffects.has('memory_grid')) {
+      const GRID = 40;
+      newPosition = {
+        x: Math.round(newPosition.x / GRID) * GRID,
+        y: Math.round(newPosition.y / GRID) * GRID,
+      };
+    }
     updateNote(droppedId, { position: newPosition });
-  }, [updateNote]);
+  }, [updateNote, activeEffects]);
 
   const handleUpdateNote = useCallback((
     id: string, 
@@ -552,6 +620,9 @@ function VoidBoardContent() {
       {/* Constellation Mode - Christmas Stars */}
       <ConstellationMode active={showConstellation} />
 
+      {/* Equipment Effects - visual layers from installed modules */}
+      <EquipmentEffects activeEffects={activeEffects} notes={notes} boardTheme={boardTheme} />
+
       {/* Live Cursors */}
       <LiveCursors cursors={cursorsWithColors} />
 
@@ -636,6 +707,23 @@ function VoidBoardContent() {
         userId={user?.id ?? null}
         currentVoidId={currentVoidId}
       />
+
+      {/* warp_jump effect: quick jump to densest cluster */}
+      {activeEffects.has('warp_jump') && notes.length > 0 && (
+        <button
+          onClick={() => {
+            // Find centroid of notes
+            const cx = notes.reduce((s, n) => s + n.position.x, 0) / notes.length;
+            const cy = notes.reduce((s, n) => s + n.position.y, 0) / notes.length;
+            // Recenter and zoom
+            recenter();
+          }}
+          className="fixed bottom-16 left-16 z-[100] flex items-center gap-2 px-3 py-2 border border-foreground/30 bg-background/80 backdrop-blur-sm hover:bg-foreground hover:text-background transition-colors"
+          title="Warp to note cluster"
+        >
+          <span className="text-[10px] uppercase tracking-widest font-mono">Warp</span>
+        </button>
+      )}
 
       {/* Board Theme Picker */}
       <div className="fixed top-20 right-4 z-50">

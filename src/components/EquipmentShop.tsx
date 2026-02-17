@@ -128,14 +128,14 @@ export function EquipmentShop({ isOpen, onClose, userId, currentVoidId }: Equipm
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.3 }}
-          className="fixed inset-0 z-[200] void-navigator-bg flex items-center justify-center p-4"
+          className="fixed inset-0 z-[200] void-navigator-bg flex flex-col"
         >
           <motion.div
-            initial={{ scale: 0.95, opacity: 0 }}
+            initial={{ scale: 0.98, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
-            exit={{ scale: 0.95, opacity: 0 }}
+            exit={{ scale: 0.98, opacity: 0 }}
             transition={{ duration: 0.2, delay: 0.1 }}
-            className="relative w-full max-w-2xl max-h-[85vh] border-2 border-foreground bg-background flex flex-col overflow-hidden"
+            className="relative w-full h-full border-2 border-foreground bg-background flex flex-col overflow-hidden"
           >
             {/* Header */}
             <div className="flex items-center justify-between p-4 border-b border-foreground/20">
