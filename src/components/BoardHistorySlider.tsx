@@ -18,16 +18,20 @@ interface BoardHistorySliderProps {
   voidId: string | null;
   currentNotes: Array<{ id: string; text: string }>;
   onCopyNote: (text: string) => void;
+  forceOpen?: boolean;
 }
 
-export function BoardHistorySlider({ voidId, currentNotes, onCopyNote }: BoardHistorySliderProps) {
-  const [isOpen, setIsOpen] = useState(false);
+export function BoardHistorySlider({ voidId, currentNotes, onCopyNote, forceOpen }: BoardHistorySliderProps) {
+  const [isOpen, setIsOpen] = useState(forceOpen ?? false);
   const [timeOffset, setTimeOffset] = useState(0); // Minutes ago (0 = now)
   const [historicalNotes, setHistoricalNotes] = useState<HistoricalNote[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
 
-  // Time options: 0-60 minutes ago
+  // Allow external control (echo_archive equipment)
+  useEffect(() => {
+    if (forceOpen) setIsOpen(true);
+  }, [forceOpen]);
   const maxMinutes = 60;
 
   // Format time offset for display

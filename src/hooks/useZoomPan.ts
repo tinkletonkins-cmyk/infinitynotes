@@ -111,6 +111,20 @@ export function useZoomPan() {
     setState({ scale: 1, x: 0, y: 0 });
   }, []);
 
+  /**
+   * Pan the viewport so that a specific board coordinate (noteX, noteY) is centered.
+   * Optionally zooms to a target scale (default: 1).
+   */
+  const panTo = useCallback((noteX: number, noteY: number, targetScale = 1) => {
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    setState({
+      scale: targetScale,
+      x: vw / 2 - noteX * targetScale,
+      y: vh / 2 - noteY * targetScale,
+    });
+  }, []);
+
   // Register event listeners
   useEffect(() => {
     const options = { passive: false };
@@ -139,6 +153,7 @@ export function useZoomPan() {
     zoomIn,
     zoomOut,
     recenter,
+    panTo,
     isPanning: isPanning.current,
   };
 }

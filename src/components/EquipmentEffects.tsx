@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Note } from '@/hooks/useNotes';
 
@@ -6,13 +6,11 @@ interface EquipmentEffectsProps {
   activeEffects: Set<string>;
   notes: Note[];
   boardTheme: string;
+  onWarpTo?: (x: number, y: number) => void;
+  onOpenEchoArchive?: () => void;
 }
 
-/**
- * Renders visual effects for active equipment modules.
- * Each effect_key maps to a specific visual/behavioral layer.
- */
-export function EquipmentEffects({ activeEffects, notes, boardTheme }: EquipmentEffectsProps) {
+export function EquipmentEffects({ activeEffects, notes, boardTheme, onWarpTo, onOpenEchoArchive }: EquipmentEffectsProps) {
   return (
     <>
       {/* thread_weaver: faint connection lines between nearby notes */}
@@ -24,14 +22,24 @@ export function EquipmentEffects({ activeEffects, notes, boardTheme }: Equipment
       {/* nebula_skin: animated nebula background overlay */}
       {activeEffects.has('nebula_skin') && <NebulaSkinEffect />}
 
-      {/* aura_field: mood-responsive glow on the entire board */}
+      {/* aura_field: mood-responsive glow based on note colors */}
       {activeEffects.has('aura_field') && <AuraFieldEffect notes={notes} />}
 
       {/* signature_border: personal void border glow */}
       {activeEffects.has('signature_border') && <SignatureBorderEffect />}
 
       {/* void_compass: minimap radar */}
-      {activeEffects.has('void_compass') && <VoidCompassEffect notes={notes} />}
+      {activeEffects.has('void_compass') && <VoidCompassEffect notes={notes} onWarpTo={onWarpTo} />}
+
+      {/* warp_jump: floating warp button that zooms to cluster */}
+      {activeEffects.has('warp_jump') && notes.length > 0 && (
+        <WarpJumpButton notes={notes} onWarpTo={onWarpTo} />
+      )}
+
+      {/* echo_archive: floating button to open note history timeline */}
+      {activeEffects.has('echo_archive') && (
+        <EchoArchiveButton onOpen={onOpenEchoArchive} />
+      )}
     </>
   );
 }
@@ -54,7 +62,7 @@ function ThreadWeaverEffect({ notes }: { notes: Note[] }) {
             y1: a.position.y + 64,
             x2: b.position.x + 105,
             y2: b.position.y + 64,
-            opacity: Math.max(0.05, 0.2 * (1 - dist / PROXIMITY)),
+            opacity: Math.max(0.05, 0.25 * (1 - dist / PROXIMITY)),
           });
         }
       }
@@ -64,14 +72,21 @@ function ThreadWeaverEffect({ notes }: { notes: Note[] }) {
 
   return (
     <svg className="fixed inset-0 z-[6] pointer-events-none w-full h-full">
+      <defs>
+        <filter id="thread-glow">
+          <feGaussianBlur stdDeviation="1.5" result="blur" />
+          <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
+        </filter>
+      </defs>
       {lines.map((l, i) => (
         <line
           key={i}
           x1={l.x1} y1={l.y1} x2={l.x2} y2={l.y2}
-          stroke="hsl(270 60% 60%)"
+          stroke="hsl(270 60% 70%)"
           strokeWidth={1}
           strokeDasharray="4 4"
           opacity={l.opacity}
+          filter="url(#thread-glow)"
         />
       ))}
     </svg>
@@ -80,6 +95,14 @@ function ThreadWeaverEffect({ notes }: { notes: Note[] }) {
 
 /* ── cluster_beacon ── Colored halos around groups of 3+ nearby notes */
 function ClusterBeaconEffect({ notes }: { notes: Note[] }) {
+  const [tick, setTick] = useState(0);
+
+  // Pulse animation
+  useEffect(() => {
+    const id = setInterval(() => setTick(t => t + 1), 2000);
+    return () => clearInterval(id);
+  }, []);
+
   const clusters = useMemo(() => {
     const CLUSTER_RADIUS = 300;
     const visited = new Set<number>();
@@ -111,12 +134,23 @@ function ClusterBeaconEffect({ notes }: { notes: Note[] }) {
     <svg className="fixed inset-0 z-[5] pointer-events-none w-full h-full">
       <defs>
         <radialGradient id="beacon-grad">
-          <stop offset="0%" stopColor="hsl(270 60% 50%)" stopOpacity="0.15" />
+          <stop offset="0%" stopColor="hsl(270 60% 50%)" stopOpacity="0.2" />
           <stop offset="100%" stopColor="hsl(270 60% 50%)" stopOpacity="0" />
         </radialGradient>
       </defs>
       {clusters.map((c, i) => (
-        <circle key={i} cx={c.cx} cy={c.cy} r={c.radius} fill="url(#beacon-grad)" />
+        <g key={i}>
+          <circle cx={c.cx} cy={c.cy} r={c.radius} fill="url(#beacon-grad)" />
+          {/* Pulsing ring */}
+          <circle
+            cx={c.cx} cy={c.cy}
+            r={c.radius * (0.6 + 0.4 * ((tick % 3) / 3))}
+            fill="none"
+            stroke="hsl(270 60% 60%)"
+            strokeWidth="1"
+            opacity={0.3 - 0.3 * ((tick % 3) / 3)}
+          />
+        </g>
       ))}
     </svg>
   );
@@ -129,34 +163,55 @@ function NebulaSkinEffect() {
       className="fixed inset-0 z-[4] pointer-events-none"
       animate={{
         background: [
-          'radial-gradient(ellipse at 30% 40%, hsl(270 50% 15% / 0.3) 0%, transparent 60%)',
-          'radial-gradient(ellipse at 70% 60%, hsl(220 50% 15% / 0.3) 0%, transparent 60%)',
-          'radial-gradient(ellipse at 50% 30%, hsl(300 40% 15% / 0.3) 0%, transparent 60%)',
-          'radial-gradient(ellipse at 30% 40%, hsl(270 50% 15% / 0.3) 0%, transparent 60%)',
+          'radial-gradient(ellipse at 30% 40%, hsl(270 50% 15% / 0.35) 0%, transparent 60%)',
+          'radial-gradient(ellipse at 70% 60%, hsl(220 50% 15% / 0.35) 0%, transparent 60%)',
+          'radial-gradient(ellipse at 50% 30%, hsl(300 40% 15% / 0.35) 0%, transparent 60%)',
+          'radial-gradient(ellipse at 20% 70%, hsl(200 50% 15% / 0.35) 0%, transparent 60%)',
+          'radial-gradient(ellipse at 30% 40%, hsl(270 50% 15% / 0.35) 0%, transparent 60%)',
         ],
       }}
-      transition={{ duration: 15, repeat: Infinity, ease: 'easeInOut' }}
+      transition={{ duration: 12, repeat: Infinity, ease: 'easeInOut' }}
     />
   );
 }
 
-/* ── aura_field ── Board-wide mood glow based on dominant note emotion */
+/* ── aura_field ── Board-wide mood glow based on dominant note color */
 function AuraFieldEffect({ notes }: { notes: Note[] }) {
+  // Map note colors to hues for real mood-responsive behavior
+  const colorToHue: Record<string, number> = {
+    '#fef08a': 55,   // yellow → warm
+    '#86efac': 140,  // green → calm
+    '#93c5fd': 215,  // blue → cool
+    '#f9a8d4': 330,  // pink → soft
+    '#fca5a5': 0,    // red → intense
+    '#c4b5fd': 270,  // purple → cosmic (default)
+    '#fdba74': 30,   // orange → energetic
+    '#6ee7b7': 160,  // teal → focused
+  };
+
   const dominantHue = useMemo(() => {
-    if (notes.length === 0) return 270;
-    // Simple heuristic: count notes with colors
     const coloredNotes = notes.filter(n => n.color);
     if (coloredNotes.length === 0) return 270;
-    // Use the most recent colored note's hue
-    return 270; // Purple default - could parse colors but keeping simple
+    // Count occurrences of each color
+    const tally: Record<string, number> = {};
+    for (const note of coloredNotes) {
+      tally[note.color!] = (tally[note.color!] || 0) + 1;
+    }
+    const dominant = Object.entries(tally).sort((a, b) => b[1] - a[1])[0][0];
+    return colorToHue[dominant] ?? 270;
   }, [notes]);
 
   return (
-    <div
+    <motion.div
       className="fixed inset-0 z-[3] pointer-events-none"
-      style={{
-        background: `radial-gradient(ellipse at 50% 50%, hsl(${dominantHue} 40% 20% / 0.15) 0%, transparent 70%)`,
+      animate={{
+        background: [
+          `radial-gradient(ellipse at 30% 50%, hsl(${dominantHue} 50% 25% / 0.18) 0%, transparent 65%)`,
+          `radial-gradient(ellipse at 70% 50%, hsl(${dominantHue} 50% 25% / 0.22) 0%, transparent 65%)`,
+          `radial-gradient(ellipse at 50% 30%, hsl(${dominantHue} 50% 25% / 0.18) 0%, transparent 65%)`,
+        ],
       }}
+      transition={{ duration: 8, repeat: Infinity, ease: 'easeInOut' }}
     />
   );
 }
@@ -168,25 +223,27 @@ function SignatureBorderEffect() {
       className="fixed inset-0 z-[8] pointer-events-none"
       animate={{
         boxShadow: [
-          'inset 0 0 30px hsl(270 60% 40% / 0.2), inset 0 0 60px hsl(45 90% 55% / 0.1)',
-          'inset 0 0 50px hsl(270 60% 40% / 0.3), inset 0 0 80px hsl(45 90% 55% / 0.15)',
-          'inset 0 0 30px hsl(270 60% 40% / 0.2), inset 0 0 60px hsl(45 90% 55% / 0.1)',
+          'inset 0 0 30px hsl(270 60% 40% / 0.25), inset 0 0 60px hsl(45 90% 55% / 0.12)',
+          'inset 0 0 50px hsl(270 60% 40% / 0.4), inset 0 0 80px hsl(45 90% 55% / 0.2)',
+          'inset 0 0 30px hsl(270 60% 40% / 0.25), inset 0 0 60px hsl(45 90% 55% / 0.12)',
         ],
       }}
-      transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
+      transition={{ duration: 3.5, repeat: Infinity, ease: 'easeInOut' }}
     />
   );
 }
 
-/* ── void_compass ── Minimap showing note distribution */
-function VoidCompassEffect({ notes }: { notes: Note[] }) {
+/* ── void_compass ── Minimap showing note distribution, click to warp */
+function VoidCompassEffect({ notes, onWarpTo }: { notes: Note[]; onWarpTo?: (x: number, y: number) => void }) {
   const dots = useMemo(() => {
     if (notes.length === 0) return [];
     const vw = window.innerWidth;
     const vh = window.innerHeight;
     return notes.map(n => ({
-      x: Math.min(100, Math.max(0, (n.position.x / vw) * 100)),
-      y: Math.min(100, Math.max(0, (n.position.y / vh) * 100)),
+      x: Math.min(96, Math.max(2, (n.position.x / vw) * 100)),
+      y: Math.min(96, Math.max(2, (n.position.y / vh) * 100)),
+      rawX: n.position.x,
+      rawY: n.position.y,
     }));
   }, [notes]);
 
@@ -195,10 +252,12 @@ function VoidCompassEffect({ notes }: { notes: Note[] }) {
       <div className="absolute inset-0 p-1">
         <div className="relative w-full h-full">
           {dots.map((d, i) => (
-            <div
+            <button
               key={i}
-              className="absolute w-1.5 h-1.5 bg-purple-400/70"
+              onClick={() => onWarpTo?.(d.rawX, d.rawY)}
+              className="absolute w-1.5 h-1.5 bg-purple-400/70 hover:bg-purple-300 transition-colors cursor-pointer"
               style={{ left: `${d.x}%`, top: `${d.y}%`, transform: 'translate(-50%, -50%)' }}
+              title="Jump to note"
             />
           ))}
         </div>
@@ -207,5 +266,69 @@ function VoidCompassEffect({ notes }: { notes: Note[] }) {
         Compass
       </span>
     </div>
+  );
+}
+
+/* ── warp_jump ── Floating button that zooms to the densest note cluster */
+function WarpJumpButton({ notes, onWarpTo }: { notes: Note[]; onWarpTo?: (x: number, y: number) => void }) {
+  const clusterCenter = useMemo(() => {
+    if (notes.length === 0) return null;
+    // Find densest cluster: group notes within 400px of each other
+    let bestGroup: Note[] = [];
+    for (const pivot of notes) {
+      const group = notes.filter(n => {
+        const dx = n.position.x - pivot.position.x;
+        const dy = n.position.y - pivot.position.y;
+        return Math.sqrt(dx * dx + dy * dy) < 400;
+      });
+      if (group.length > bestGroup.length) bestGroup = group;
+    }
+    const cx = bestGroup.reduce((s, n) => s + n.position.x, 0) / bestGroup.length;
+    const cy = bestGroup.reduce((s, n) => s + n.position.y, 0) / bestGroup.length;
+    return { x: cx, y: cy };
+  }, [notes]);
+
+  if (!clusterCenter) return null;
+
+  return (
+    <motion.button
+      onClick={() => onWarpTo?.(clusterCenter.x, clusterCenter.y)}
+      className="fixed bottom-16 left-20 z-[100] flex items-center gap-2 px-3 py-2 border border-foreground/40 bg-background/80 backdrop-blur-sm hover:bg-foreground hover:text-background transition-colors font-mono text-[10px] uppercase tracking-widest"
+      title="Warp to densest note cluster"
+      initial={{ opacity: 0, x: -10 }}
+      animate={{ opacity: 1, x: 0 }}
+      whileHover={{ scale: 1.05 }}
+      whileTap={{ scale: 0.97 }}
+    >
+      ⚡ Warp
+    </motion.button>
+  );
+}
+
+/* ── echo_archive ── Floating button to open note history timeline */
+function EchoArchiveButton({ onOpen }: { onOpen?: () => void }) {
+  const [pulse, setPulse] = useState(false);
+
+  // Pulse every 10s to remind the user it exists
+  useEffect(() => {
+    const id = setInterval(() => {
+      setPulse(true);
+      setTimeout(() => setPulse(false), 800);
+    }, 10000);
+    return () => clearInterval(id);
+  }, []);
+
+  return (
+    <motion.button
+      onClick={onOpen}
+      className="fixed bottom-28 left-4 z-[100] flex items-center gap-2 px-3 py-2 border border-foreground/40 bg-background/80 backdrop-blur-sm hover:bg-foreground hover:text-background transition-colors font-mono text-[10px] uppercase tracking-widest"
+      title="Open note history timeline"
+      animate={pulse ? { boxShadow: ['0 0 0px hsl(270 60% 60% / 0)', '0 0 16px hsl(270 60% 60% / 0.7)', '0 0 0px hsl(270 60% 60% / 0)'] } : {}}
+      transition={{ duration: 0.8 }}
+      whileHover={{ scale: 1.05 }}
+      whileTap={{ scale: 0.97 }}
+    >
+      📼 Echo
+    </motion.button>
   );
 }
