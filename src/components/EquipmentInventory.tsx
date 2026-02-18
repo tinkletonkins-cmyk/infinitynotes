@@ -1,5 +1,5 @@
 import React from 'react';
-import { Download, Unplug } from 'lucide-react';
+import { Unplug, Play, Square } from 'lucide-react';
 import { EquipmentItem, OwnedEquipment } from '@/hooks/useEquipment';
 
 interface EquipmentInventoryProps {
@@ -50,17 +50,28 @@ export function EquipmentInventory({ owned, catalog, currentVoidId, onInstall, o
               {currentVoidId && !isInstalledHere && (
                 <button
                   onClick={() => onInstall(oe.id, currentVoidId)}
-                  className="p-1.5 border border-foreground/20 hover:bg-foreground hover:text-background transition-colors"
-                  title="Install to current void"
+                  className="flex items-center gap-1 px-2 py-1 text-[10px] font-mono uppercase tracking-widest border border-purple-400/40 text-purple-300 hover:bg-purple-500/20 transition-colors"
+                  title="Activate in current void"
                 >
-                  <Download size={12} />
+                  <Play size={9} />
+                  Use
                 </button>
               )}
-              {isInstalled && (
+              {isInstalledHere && (
                 <button
                   onClick={() => onUninstall(oe.id)}
-                  className="p-1.5 border border-foreground/20 hover:bg-foreground hover:text-background transition-colors"
-                  title="Uninstall"
+                  className="flex items-center gap-1 px-2 py-1 text-[10px] font-mono uppercase tracking-widest border border-foreground/20 text-muted-foreground hover:bg-foreground hover:text-background transition-colors"
+                  title="Deactivate"
+                >
+                  <Square size={9} />
+                  Stop
+                </button>
+              )}
+              {isInstalled && !isInstalledHere && (
+                <button
+                  onClick={() => onUninstall(oe.id)}
+                  className="p-1.5 border border-foreground/10 text-muted-foreground hover:bg-foreground hover:text-background transition-colors"
+                  title="Uninstall from other void"
                 >
                   <Unplug size={12} />
                 </button>
