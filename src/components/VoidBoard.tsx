@@ -134,7 +134,7 @@ function VoidBoardContent() {
   }, [remoteCursors]);
   
   // Zoom and pan
-  const { scale, x, y, zoomIn, zoomOut, recenter } = useZoomPan();
+  const { scale, x, y, zoomIn, zoomOut, recenter, panTo } = useZoomPan();
   
   // AI features
   const {
@@ -161,6 +161,7 @@ function VoidBoardContent() {
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [showNavigator, setShowNavigator] = useState(false);
   const [showEquipmentShop, setShowEquipmentShop] = useState(false);
+  const [echoArchiveOpen, setEchoArchiveOpen] = useState(false);
 
   // Void note counts for navigator glow
   const voidIds = useMemo(() => voids.map(v => v.id), [voids]);
@@ -196,25 +197,32 @@ function VoidBoardContent() {
     return () => clearInterval(interval);
   }, [activeEffects, connections, notes, updateNote]);
 
-  // resonance_lens effect: auto-suggest connections when 5+ notes exist
+  // resonance_lens effect: auto-suggest connections whenever note count crosses a threshold
+  const prevNoteLengthRef = React.useRef(0);
   useEffect(() => {
-    if (!activeEffects.has('resonance_lens') || notes.length < 5) return;
-    // Trigger connection suggestions automatically once
-    if (!showSuggestionsModal && connectionSuggestions.length === 0 && !isLoadingConnections) {
+    if (!activeEffects.has('resonance_lens')) return;
+    const prev = prevNoteLengthRef.current;
+    prevNoteLengthRef.current = notes.length;
+    // Trigger when 5+ notes exist and count has grown since last check
+    if (notes.length >= 5 && notes.length > prev && !isLoadingConnections) {
       suggestConnections(notes);
+      setShowSuggestionsModal(true);
     }
-  }, [activeEffects, notes.length]);
+  }, [activeEffects, notes.length]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // tag_engine effect: auto-tag new notes based on content keywords
+  // tag_engine effect: auto-tag notes that have no tags yet, watch note IDs to catch new notes
+  const noteIdsKey = useMemo(() => notes.map(n => n.id).join(','), [notes]);
   useEffect(() => {
     if (!activeEffects.has('tag_engine')) return;
     const KEYWORD_TAGS: Record<string, string[]> = {
       'idea': ['💡 idea'], 'todo': ['📋 todo'], 'bug': ['🐛 bug'],
       'question': ['❓ question'], 'important': ['⭐ important'],
       'done': ['✅ done'], 'link': ['🔗 link'], 'meeting': ['📅 meeting'],
+      'note': ['📝 note'], 'review': ['🔍 review'], 'urgent': ['🚨 urgent'],
     };
     for (const note of notes) {
-      if ((note.tags || []).length > 0) continue; // already tagged
+      if ((note.tags || []).length > 0) continue; // already tagged — don't overwrite
+      if (!note.text.trim()) continue;
       const text = note.text.toLowerCase();
       const autoTags: string[] = [];
       for (const [keyword, tags] of Object.entries(KEYWORD_TAGS)) {
@@ -224,7 +232,7 @@ function VoidBoardContent() {
         updateNote(note.id, { tags: autoTags });
       }
     }
-  }, [activeEffects, notes, updateNote]);
+  }, [activeEffects, noteIdsKey]); // eslint-disable-line react-hooks/exhaustive-deps
   
   // Modal states
   const [showAuthModal, setShowAuthModal] = useState(false);
@@ -621,7 +629,13 @@ function VoidBoardContent() {
       <ConstellationMode active={showConstellation} />
 
       {/* Equipment Effects - visual layers from installed modules */}
-      <EquipmentEffects activeEffects={activeEffects} notes={notes} boardTheme={boardTheme} />
+      <EquipmentEffects
+        activeEffects={activeEffects}
+        notes={notes}
+        boardTheme={boardTheme}
+        onWarpTo={(nx, ny) => panTo(nx + 128, ny + 100, 1)}
+        onOpenEchoArchive={() => setEchoArchiveOpen(true)}
+      />
 
       {/* Live Cursors */}
       <LiveCursors cursors={cursorsWithColors} />
@@ -708,22 +722,7 @@ function VoidBoardContent() {
         currentVoidId={currentVoidId}
       />
 
-      {/* warp_jump effect: quick jump to densest cluster */}
-      {activeEffects.has('warp_jump') && notes.length > 0 && (
-        <button
-          onClick={() => {
-            // Find centroid of notes
-            const cx = notes.reduce((s, n) => s + n.position.x, 0) / notes.length;
-            const cy = notes.reduce((s, n) => s + n.position.y, 0) / notes.length;
-            // Recenter and zoom
-            recenter();
-          }}
-          className="fixed bottom-16 left-16 z-[100] flex items-center gap-2 px-3 py-2 border border-foreground/30 bg-background/80 backdrop-blur-sm hover:bg-foreground hover:text-background transition-colors"
-          title="Warp to note cluster"
-        >
-          <span className="text-[10px] uppercase tracking-widest font-mono">Warp</span>
-        </button>
-      )}
+      {/* warp_jump: now rendered inside EquipmentEffects via WarpJumpButton */}
 
       {/* Board Theme Picker */}
       <div className="fixed top-20 right-4 z-50">
@@ -870,6 +869,7 @@ function VoidBoardContent() {
         voidId={currentVoidId}
         currentNotes={notes}
         onCopyNote={handleCopyFromHistory}
+        forceOpen={echoArchiveOpen}
       />
 
       {/* Sync Indicator */}
