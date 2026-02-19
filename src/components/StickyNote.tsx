@@ -111,6 +111,8 @@ export function StickyNote({
   const draftSaveTimerRef = useRef<NodeJS.Timeout | null>(null);
   const lastDraftSaveRef = useRef<number>(0);
   const pendingTextRef = useRef<string>(initialText);
+  // Track whether user has manually positioned this note — prevent prop sync from snapping it back
+  const hasUserPositionedRef = useRef(false);
   
   const { updatePosition, positions } = useNotePositions();
   const { snapPosition } = useSnapToAlign(positions, id);
@@ -134,19 +136,33 @@ export function StickyNote({
   const emotion: EmotionType = isReceivingRemote ? 'neutral' : localEmotion; // 'neutral' is placeholder when using remote color
   const emotionClass = getEmotionClass(emotion);
 
-  // Sync position from props (for when parent drags this child) or from remote broadcast
+  // Sync position from props — only apply if the user hasn't manually moved the note,
+  // or if we're receiving a genuine remote position from another user.
   useEffect(() => {
-    // Don't override if we're currently dragging
     if (isDragging) return;
-    
-    // Use remote position if available, otherwise use initial position
-    const targetPosition = remotePosition || initialPosition;
-    x.set(targetPosition.x);
-    y.set(targetPosition.y);
-    lastPositionRef.current = targetPosition;
-    // Update shared position context
-    updatePosition(id, targetPosition);
-  }, [initialPosition, remotePosition, x, y, id, updatePosition, isDragging]);
+
+    if (remotePosition) {
+      // Always sync remote positions (another user moved this note)
+      x.set(remotePosition.x);
+      y.set(remotePosition.y);
+      lastPositionRef.current = remotePosition;
+      updatePosition(id, remotePosition);
+    } else if (!hasUserPositionedRef.current) {
+      // Only sync initialPosition on first mount (before user has dragged)
+      x.set(initialPosition.x);
+      y.set(initialPosition.y);
+      lastPositionRef.current = initialPosition;
+      updatePosition(id, initialPosition);
+    }
+  }, [remotePosition]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // On first mount, set initial position
+  useEffect(() => {
+    x.set(initialPosition.x);
+    y.set(initialPosition.y);
+    lastPositionRef.current = initialPosition;
+    updatePosition(id, initialPosition);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Sync color and shape from props
   useEffect(() => {
@@ -313,6 +329,8 @@ export function StickyNote({
 
   const handleDragEnd = () => {
     setIsDragging(false);
+    // Mark that this note has been manually positioned — prevent DB re-sync from snapping it back
+    hasUserPositionedRef.current = true;
     const currentPos = { x: x.get(), y: y.get() };
     
     // Snap to nearby notes
