@@ -50,15 +50,21 @@ function TierStars({ tier }: { tier: number }) {
 function EquipmentCard({
   item,
   isOwned,
+  isActive,
   canAfford,
   isPurchasing,
   onPurchase,
+  onActivate,
+  onDeactivate,
 }: {
   item: EquipmentItem;
   isOwned: boolean;
+  isActive: boolean;
   canAfford: boolean;
   isPurchasing: boolean;
   onPurchase: () => void;
+  onActivate: () => void;
+  onDeactivate: () => void;
 }) {
   const tierClass = item.tier === 3
     ? 'equipment-tier-3'
@@ -68,13 +74,24 @@ function EquipmentCard({
 
   return (
     <div
-      className={`p-4 border border-foreground/20 bg-foreground/5 flex flex-col gap-2 ${tierClass}`}
+      className={`p-4 border flex flex-col gap-2 transition-colors ${tierClass} ${
+        isActive
+          ? 'border-purple-400/50 bg-purple-500/10'
+          : 'border-foreground/20 bg-foreground/5'
+      }`}
     >
       <div className="flex items-start justify-between">
         <div className="p-2 border border-foreground/10 bg-foreground/5">
           <DynamicIcon name={item.icon} size={18} />
         </div>
-        <TierStars tier={item.tier} />
+        <div className="flex flex-col items-end gap-1">
+          <TierStars tier={item.tier} />
+          {isActive && (
+            <span className="text-[8px] font-mono uppercase tracking-widest text-purple-400 animate-pulse">
+              ● Active
+            </span>
+          )}
+        </div>
       </div>
       <h3 className="text-xs font-mono uppercase tracking-wider text-foreground">{item.name}</h3>
       <p className="text-[10px] text-muted-foreground leading-relaxed flex-1">{item.description}</p>
@@ -82,15 +99,27 @@ function EquipmentCard({
         <span className="flex items-center gap-1 text-[10px] font-mono text-purple-300/80">
           <Zap size={10} /> {item.energy_cost}
         </span>
-        {isOwned ? (
-          <span className="text-[10px] font-mono uppercase tracking-wider text-purple-400/60">Owned</span>
-        ) : (
+        {!isOwned ? (
           <button
             onClick={onPurchase}
             disabled={!canAfford || isPurchasing}
             className="btn-brutalist text-[10px] px-2 py-1 disabled:opacity-30 disabled:cursor-not-allowed"
           >
             Acquire
+          </button>
+        ) : isActive ? (
+          <button
+            onClick={onDeactivate}
+            className="flex items-center gap-1 px-2 py-1 text-[10px] font-mono uppercase tracking-widest border border-foreground/20 text-muted-foreground hover:bg-foreground hover:text-background transition-colors"
+          >
+            Stop
+          </button>
+        ) : (
+          <button
+            onClick={onActivate}
+            className="flex items-center gap-1 px-2 py-1 text-[10px] font-mono uppercase tracking-widest border border-purple-400/40 text-purple-300 hover:bg-purple-500/20 transition-colors"
+          >
+            Use
           </button>
         )}
       </div>
@@ -104,6 +133,21 @@ export function EquipmentShop({ isOpen, onClose, userId, currentVoidId }: Equipm
 
   const ownedIds = useMemo(() => new Set(owned.map(o => o.equipment_id)), [owned]);
 
+  // Map equipment_id -> player_equipment_id for active items in the current void
+  const activeMap = useMemo(() => {
+    const map = new Map<string, string>(); // equipment_id -> player_equipment_id
+    for (const oe of owned) {
+      if (oe.void_id === currentVoidId) {
+        map.set(oe.equipment_id, oe.id);
+      }
+    }
+    return map;
+  }, [owned, currentVoidId]);
+
+  // Player equipment id for a given catalog item (used to install/uninstall)
+  const getOwnedEntry = (equipmentId: string) =>
+    owned.find(o => o.equipment_id === equipmentId);
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
@@ -115,9 +159,31 @@ export function EquipmentShop({ isOpen, onClose, userId, currentVoidId }: Equipm
   const handlePurchase = async (equipmentId: string) => {
     try {
       await purchaseEquipment(equipmentId);
-      toast({ title: 'Module acquired', description: 'Check your inventory to install it.' });
+      toast({ title: 'Module acquired', description: 'Press Use to activate it now.' });
     } catch (err: any) {
       toast({ title: 'Acquisition failed', description: err.message, variant: 'destructive' });
+    }
+  };
+
+  const handleActivate = async (equipmentId: string) => {
+    const entry = getOwnedEntry(equipmentId);
+    if (!entry || !currentVoidId) return;
+    try {
+      await installEquipment(entry.id, currentVoidId);
+      toast({ title: 'Module activated', description: 'Effect is now live on this board.' });
+    } catch {
+      toast({ title: 'Activation failed', variant: 'destructive' });
+    }
+  };
+
+  const handleDeactivate = async (equipmentId: string) => {
+    const playerEquipmentId = activeMap.get(equipmentId);
+    if (!playerEquipmentId) return;
+    try {
+      await uninstallEquipment(playerEquipmentId);
+      toast({ title: 'Module deactivated' });
+    } catch {
+      toast({ title: 'Deactivation failed', variant: 'destructive' });
     }
   };
 
@@ -188,9 +254,12 @@ export function EquipmentShop({ isOpen, onClose, userId, currentVoidId }: Equipm
                             key={item.id}
                             item={item}
                             isOwned={ownedIds.has(item.id)}
+                            isActive={activeMap.has(item.id)}
                             canAfford={energy >= item.energy_cost}
                             isPurchasing={isPurchasing}
                             onPurchase={() => handlePurchase(item.id)}
+                            onActivate={() => handleActivate(item.id)}
+                            onDeactivate={() => handleDeactivate(item.id)}
                           />
                         ))}
                     </div>
