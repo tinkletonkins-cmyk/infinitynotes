@@ -112,8 +112,12 @@ function VoidBoardContent() {
   // Void Pulse - activity-based background effects
   const { activityLevel, ripples, pulseNoteCreated, pulseReaction, pulseTyping } = useVoidPulse(currentVoidId);
   
+  // Use a stable fallback so equipment can be used even without a named void
+  const DEFAULT_VOID_KEY = '__default__';
+  const effectiveVoidId = currentVoidId ?? DEFAULT_VOID_KEY;
+
   // Active equipment effects for the current void
-  const activeEffects = useActiveEffects(user?.id ?? null, currentVoidId);
+  const activeEffects = useActiveEffects(user?.id ?? null, effectiveVoidId);
   
   // Broadcast cursor position on mouse move
   useEffect(() => {
@@ -719,7 +723,7 @@ function VoidBoardContent() {
         isOpen={showEquipmentShop}
         onClose={() => setShowEquipmentShop(false)}
         userId={user?.id ?? null}
-        currentVoidId={currentVoidId}
+        currentVoidId={effectiveVoidId}
       />
 
       {/* warp_jump: now rendered inside EquipmentEffects via WarpJumpButton */}
