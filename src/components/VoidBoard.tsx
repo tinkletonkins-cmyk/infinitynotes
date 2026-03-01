@@ -161,7 +161,7 @@ function VoidBoardContent() {
   const [dragStates, setDragStates] = useState<Record<string, { isDragging: boolean; x: number; y: number }>>({});
   const [showSummaryModal, setShowSummaryModal] = useState(false);
   const [showSuggestionsModal, setShowSuggestionsModal] = useState(false);
-  const [drawingMode, setDrawingMode] = useState(false);
+  const [canvasMode, setCanvasMode] = useState(false);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [showNavigator, setShowNavigator] = useState(false);
   const [showEquipmentShop, setShowEquipmentShop] = useState(false);
@@ -616,11 +616,12 @@ function VoidBoardContent() {
         onAccept={handleAcceptSuggestion}
       />
 
-      {/* Drawing Canvas */}
+      {/* Drawing Canvas - inline read-only layer */}
       <DrawingCanvas 
-        isActive={drawingMode} 
-        onClose={() => setDrawingMode(false)} 
+        isActive={canvasMode} 
+        onClose={() => setCanvasMode(false)} 
         voidId={currentVoidId}
+        fullScreen={canvasMode}
       />
 
       {/* Void Pulse - Activity-based background effects */}
@@ -733,11 +734,11 @@ function VoidBoardContent() {
         <BoardThemePicker currentTheme={boardTheme} onThemeSelect={setBoardTheme} />
       </div>
 
-      {/* Drawing mode toggle */}
+      {/* Drawing Void toggle */}
       <button
-        onClick={() => setDrawingMode(!drawingMode)}
-        className={`fixed top-32 right-4 z-50 flex items-center gap-2 px-3 py-2 border border-foreground transition-colors ${drawingMode ? 'bg-foreground text-background' : 'bg-background hover:bg-foreground hover:text-background'}`}
-        title={drawingMode ? 'Exit drawing mode' : 'Enter drawing mode'}
+        onClick={() => setCanvasMode(true)}
+        className="fixed top-32 right-4 z-50 flex items-center gap-2 px-3 py-2 border border-foreground bg-background hover:bg-foreground hover:text-background transition-colors"
+        title="Enter Drawing Void"
       >
         <Pencil size={14} />
         <span className="text-xs uppercase tracking-widest font-mono">Draw</span>
