@@ -33,8 +33,6 @@ import { BoardHistorySlider } from './BoardHistorySlider';
 import { LiveCursors, getCursorColor } from './LiveCursors';
 import { VoidPulse } from './VoidPulse';
 import { SyncIndicator } from './SyncIndicator';
-import { VoidNavigator } from './VoidNavigator';
-import { useVoidNoteCounts } from '@/hooks/useVoidNoteCounts';
 import { EquipmentShop } from './EquipmentShop';
 import { useActiveEffects } from '@/hooks/useActiveEffects';
 import { EquipmentEffects } from './EquipmentEffects';
@@ -163,7 +161,6 @@ function VoidBoardContent() {
   const [showSuggestionsModal, setShowSuggestionsModal] = useState(false);
   const [canvasMode, setCanvasMode] = useState(false);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
-  const [showNavigator, setShowNavigator] = useState(false);
   const [showEquipmentShop, setShowEquipmentShop] = useState(false);
   const [echoArchiveOpen, setEchoArchiveOpen] = useState(false);
 
@@ -888,7 +885,7 @@ function VoidBoardContent() {
             onRecenter={recenter}
             onZoomIn={zoomIn}
             onZoomOut={zoomOut}
-            onOpenNavigator={() => setShowNavigator(true)}
+            
           />
         </div>
         <div>
