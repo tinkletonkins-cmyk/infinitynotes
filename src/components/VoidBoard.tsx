@@ -1,12 +1,10 @@
 import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { Plus, Loader2, Link2, X, Sparkles, BookOpen, Zap, Pencil, Wrench } from 'lucide-react';
 import { StickyNote } from './StickyNote';
-import { Switch } from '@/components/ui/switch';
 import { useNotes, Note } from '@/hooks/useNotes';
 import { useConnections } from '@/hooks/useConnections';
 import { useReactions } from '@/hooks/useReactions';
 import { useAuth } from '@/hooks/useAuth';
-import { useVoids } from '@/hooks/useVoids';
 import { useVoidAI } from '@/hooks/useVoidAI';
 import { useRealtimeTyping } from '@/hooks/useRealtimeTyping';
 import { useZoomPan } from '@/hooks/useZoomPan';
@@ -16,10 +14,6 @@ import { TagsFilter } from './TagsFilter';
 import { DrawingCanvas } from './DrawingCanvas';
 import { NotePositionsProvider, useNotePositions } from '@/contexts/NotePositionsContext';
 import { WelcomeIntro } from './WelcomeIntro';
-import { VoidSwitcher } from './VoidSwitcher';
-import { AuthModal } from './AuthModal';
-import { CreateVoidModal } from './CreateVoidModal';
-import { JoinVoidModal } from './JoinVoidModal';
 import { useToast } from '@/hooks/use-toast';
 import { AmbientSound } from './AmbientSound';
 import { NoteTrail } from './NoteTrail';
@@ -96,10 +90,9 @@ function pointToLineDistance(
 
 function VoidBoardContent() {
   const { user, signOut } = useAuth();
-  const { voids, createVoid, deleteVoid, joinVoidByCode } = useVoids(user?.id ?? null);
   const { toast } = useToast();
   
-  const [currentVoidId, setCurrentVoidId] = useState<string | null>(null);
+  const currentVoidId: string | null = null;
   const { notes, isLoading, isSyncing, lastSyncTime, addNote, updateNote, deleteNote, setNoteEditing } = useNotes(currentVoidId);
   const { connections, addConnection, removeConnectionsForNote } = useConnections(currentVoidId);
   const noteIds = useMemo(() => notes.map(n => n.id), [notes]);
@@ -164,7 +157,6 @@ function VoidBoardContent() {
   const [showEquipmentShop, setShowEquipmentShop] = useState(false);
   const [echoArchiveOpen, setEchoArchiveOpen] = useState(false);
 
-
   // Show welcome intro for non-signed-in users
   useEffect(() => {
     setShowWelcome(!user);
@@ -201,14 +193,13 @@ function VoidBoardContent() {
     if (!activeEffects.has('resonance_lens')) return;
     const prev = prevNoteLengthRef.current;
     prevNoteLengthRef.current = notes.length;
-    // Trigger when 5+ notes exist and count has grown since last check
     if (notes.length >= 5 && notes.length > prev && !isLoadingConnections) {
       suggestConnections(notes);
       setShowSuggestionsModal(true);
     }
   }, [activeEffects, notes.length]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // tag_engine effect: auto-tag notes that have no tags yet, watch note IDs to catch new notes
+  // tag_engine effect: auto-tag notes that have no tags yet
   const noteIdsKey = useMemo(() => notes.map(n => n.id).join(','), [notes]);
   useEffect(() => {
     if (!activeEffects.has('tag_engine')) return;
@@ -219,7 +210,7 @@ function VoidBoardContent() {
       'note': ['📝 note'], 'review': ['🔍 review'], 'urgent': ['🚨 urgent'],
     };
     for (const note of notes) {
-      if ((note.tags || []).length > 0) continue; // already tagged — don't overwrite
+      if ((note.tags || []).length > 0) continue;
       if (!note.text.trim()) continue;
       const text = note.text.toLowerCase();
       const autoTags: string[] = [];
@@ -231,60 +222,6 @@ function VoidBoardContent() {
       }
     }
   }, [activeEffects, noteIdsKey]); // eslint-disable-line react-hooks/exhaustive-deps
-  
-  // Modal states
-  const [showAuthModal, setShowAuthModal] = useState(false);
-  const [showCreateVoidModal, setShowCreateVoidModal] = useState(false);
-  const [showJoinVoidModal, setShowJoinVoidModal] = useState(false);
-
-  // Handle join code from URL
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const joinCode = params.get('join');
-    
-    if (joinCode) {
-      // Remove from URL
-      window.history.replaceState({}, '', window.location.pathname);
-      
-      if (user) {
-        // Try to join immediately
-        handleJoinVoid(joinCode);
-      } else {
-        // Store for after login
-        localStorage.setItem('pending-join-code', joinCode);
-        setShowAuthModal(true);
-      }
-    }
-  }, [user]);
-
-  // Check for pending join code after login
-  useEffect(() => {
-    if (user) {
-      const pendingCode = localStorage.getItem('pending-join-code');
-      if (pendingCode) {
-        localStorage.removeItem('pending-join-code');
-        handleJoinVoid(pendingCode);
-      }
-    }
-  }, [user]);
-
-  const handleJoinVoid = async (code: string) => {
-    // Extract code from URL if full URL was pasted
-    let inviteCode = code;
-    if (code.includes('?join=')) {
-      inviteCode = code.split('?join=')[1];
-    }
-    
-    const result = await joinVoidByCode(inviteCode);
-    if (result.success && result.void) {
-      setCurrentVoidId(result.void.id);
-      toast({
-        title: 'Joined void!',
-        description: `You're now in "${result.void.name}"`,
-      });
-    }
-    return result;
-  };
 
   // Track mouse position when connecting
   useEffect(() => {
@@ -342,6 +279,7 @@ function VoidBoardContent() {
   const handleClearTags = useCallback(() => {
     setSelectedTags([]);
   }, []);
+
   const handleAddNote = useCallback(() => {
     const viewportWidth = window.innerWidth;
     const viewportHeight = window.innerHeight;
@@ -356,7 +294,6 @@ function VoidBoardContent() {
     droppedId: string,
     newPosition: { x: number; y: number }
   ) => {
-    // memory_grid effect: snap notes to a 40px grid
     if (activeEffects.has('memory_grid')) {
       const GRID = 40;
       newPosition = {
@@ -377,11 +314,10 @@ function VoidBoardContent() {
   const handleReact = useCallback((noteId: string, emoji: string) => {
     addReaction(noteId, emoji);
     
-    // Find note position for ripple effect
     const note = notes.find(n => n.id === noteId);
     if (note) {
       const pos = getPosition(noteId) || note.position;
-      pulseReaction(pos.x + 128, pos.y + 64); // Center of note
+      pulseReaction(pos.x + 128, pos.y + 64);
     }
   }, [addReaction, notes, getPosition, pulseReaction]);
 
@@ -509,30 +445,6 @@ function VoidBoardContent() {
     }));
   }, []);
 
-  const handleCreateVoid = async (name: string) => {
-    const newVoid = await createVoid(name);
-    if (newVoid) {
-      setCurrentVoidId(newVoid.id);
-      toast({
-        title: 'Void created!',
-        description: `Share code ${newVoid.invite_code} to bring others in.`,
-      });
-      return newVoid;
-    }
-    return null;
-  };
-
-  const handleDeleteVoid = async (id: string) => {
-    if (currentVoidId === id) {
-      setCurrentVoidId(null);
-    }
-    await deleteVoid(id);
-    toast({
-      title: 'Void deleted',
-      description: 'The void and all its notes have been removed.',
-    });
-  };
-
   // AI handlers
   const handleGenerateSummary = useCallback(() => {
     setShowSummaryModal(true);
@@ -552,8 +464,6 @@ function VoidBoardContent() {
     });
   }, [addConnection, toast]);
 
-  const currentVoid = currentVoidId ? voids.find(v => v.id === currentVoidId) : null;
-
   // Build board theme class
   const getThemeClass = () => {
     if (boardTheme === 'board') return 'mode-board';
@@ -566,21 +476,6 @@ function VoidBoardContent() {
     <div className={`void-board relative ${boardThemeClass}`}>
       {/* Modals */}
       <WelcomeIntro visible={showWelcome} onDismiss={handleDismissWelcome} />
-      <AuthModal 
-        isOpen={showAuthModal} 
-        onClose={() => setShowAuthModal(false)}
-        onSuccess={() => {}}
-      />
-      <CreateVoidModal
-        isOpen={showCreateVoidModal}
-        onClose={() => setShowCreateVoidModal(false)}
-        onSubmit={handleCreateVoid}
-      />
-      <JoinVoidModal
-        isOpen={showJoinVoidModal}
-        onClose={() => setShowJoinVoidModal(false)}
-        onSubmit={handleJoinVoid}
-      />
 
       {/* AI Modals */}
       <VoidSummaryModal
@@ -612,10 +507,10 @@ function VoidBoardContent() {
       {/* Mood Weather Background */}
       <MoodWeather notes={notes} />
 
-      {/* Constellation Mode - Christmas Stars */}
+      {/* Constellation Mode */}
       <ConstellationMode active={showConstellation} />
 
-      {/* Equipment Effects - visual layers from installed modules */}
+      {/* Equipment Effects */}
       <EquipmentEffects
         activeEffects={activeEffects}
         notes={notes}
@@ -649,22 +544,10 @@ function VoidBoardContent() {
 
       {/* Title */}
       <header className="fixed top-0 left-0 right-0 z-40 p-4 border-b border-foreground bg-background">
-        <div className="flex items-center justify-between">
-          <VoidSwitcher
-            currentVoidId={currentVoidId}
-            voids={voids}
-            user={user}
-            onSwitchVoid={setCurrentVoidId}
-            onCreateVoid={() => setShowCreateVoidModal(true)}
-            onDeleteVoid={handleDeleteVoid}
-            onJoinVoid={() => setShowJoinVoidModal(true)}
-            onSignIn={() => setShowAuthModal(true)}
-            onSignOut={signOut}
-          />
-          <h1 className="text-xl font-bold uppercase tracking-[0.5em] text-center flex-1">
-            {currentVoid ? currentVoid.name.toUpperCase() : 'THE MULTIPLAYER VOID'}
+        <div className="flex items-center justify-center">
+          <h1 className="text-xl font-bold uppercase tracking-[0.5em] text-center">
+            THE VOID
           </h1>
-          <div className="w-[180px]" /> {/* Spacer for balance */}
         </div>
       </header>
 
@@ -708,8 +591,6 @@ function VoidBoardContent() {
         userId={user?.id ?? null}
         currentVoidId={effectiveVoidId}
       />
-
-      {/* warp_jump: now rendered inside EquipmentEffects via WarpJumpButton */}
 
       {/* Board Theme Picker */}
       <div className="fixed top-20 right-4 z-50">
@@ -768,14 +649,13 @@ function VoidBoardContent() {
         <span className="text-xs uppercase tracking-widest font-mono">Equip</span>
       </button>
 
-
       {isLoading && (
         <div className="fixed inset-0 flex items-center justify-center pointer-events-none">
           <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
         </div>
       )}
 
-      {/* Notes container - z-10 to be above theme backgrounds but below UI controls */}
+      {/* Notes container */}
       <div 
         className="pt-16 min-h-screen relative z-10 viewport-container" 
         style={{
@@ -831,9 +711,7 @@ function VoidBoardContent() {
         {!isLoading && notes.length === 0 && (
           <div className="fixed inset-0 flex items-center justify-center pointer-events-none">
             <div className="text-center text-muted-foreground">
-              <p className="text-lg uppercase tracking-widest mb-2">
-                {currentVoid ? 'YOUR VOID IS EMPTY' : 'THE VOID AWAITS'}
-              </p>
+              <p className="text-lg uppercase tracking-widest mb-2">THE VOID AWAITS</p>
               <p className="text-sm opacity-50">Click + to spawn a note</p>
             </div>
           </div>
@@ -848,8 +726,6 @@ function VoidBoardContent() {
       >
         <Plus size={32} strokeWidth={2} />
       </button>
-
-      {/* Board Navigator is now rendered inside the footer */}
 
       {/* Board History Slider */}
       <BoardHistorySlider
@@ -870,7 +746,6 @@ function VoidBoardContent() {
             onRecenter={recenter}
             onZoomIn={zoomIn}
             onZoomOut={zoomOut}
-            
           />
         </div>
         <div>
