@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronDown, Plus, Globe, Lock, Copy, Trash2, LogIn, LogOut, Users } from 'lucide-react';
+import { ChevronDown, Plus, Lock, Copy, Trash2, LogIn, LogOut, Users } from 'lucide-react';
 import { Void } from '@/hooks/useVoids';
 import { useToast } from '@/hooks/use-toast';
 
@@ -31,14 +31,13 @@ export function VoidSwitcher({
   const { toast } = useToast();
 
   const currentVoid = currentVoidId ? voids.find(v => v.id === currentVoidId) : null;
-  const currentName = currentVoid?.name || 'Public Void';
+  const currentName = currentVoid?.name || 'Select Void';
 
   const copyInviteCode = (inviteCode: string) => {
-    // Copy just the code for simple sharing
     navigator.clipboard.writeText(inviteCode);
     toast({
       title: 'Invite code copied!',
-      description: `Share "${inviteCode}" with others to invite them.`,
+      description: `Share "${inviteCode}" with friends to invite them.`,
     });
   };
 
@@ -48,7 +47,7 @@ export function VoidSwitcher({
         onClick={() => setIsOpen(!isOpen)}
         className="flex items-center gap-2 px-4 py-2 border border-foreground bg-background hover:bg-muted transition-colors"
       >
-        {currentVoidId ? <Lock size={14} /> : <Globe size={14} />}
+        <Lock size={14} />
         <span className="text-sm font-mono uppercase tracking-wider max-w-32 truncate">
           {currentName}
         </span>
@@ -68,27 +67,7 @@ export function VoidSwitcher({
               exit={{ opacity: 0, y: -10 }}
               className="absolute top-full left-0 mt-2 w-72 border border-foreground bg-background z-50 shadow-lg"
             >
-              {/* Public void option */}
-              <button
-                onClick={() => {
-                  onSwitchVoid(null);
-                  setIsOpen(false);
-                }}
-                className={`w-full flex items-center gap-3 px-4 py-3 hover:bg-muted transition-colors text-left ${
-                  !currentVoidId ? 'bg-muted' : ''
-                }`}
-              >
-                <Globe size={16} />
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-mono uppercase tracking-wider">Public Void</p>
-                  <p className="text-xs text-muted-foreground">Open to everyone</p>
-                </div>
-              </button>
-
-              {/* Divider */}
-              <div className="border-t border-foreground/20" />
-
-              {/* User's voids */}
+              {/* User's private voids */}
               {user && voids.length > 0 && (
                 <>
                   <div className="px-4 py-2 text-xs text-muted-foreground uppercase tracking-wider">
@@ -144,6 +123,12 @@ export function VoidSwitcher({
                 </>
               )}
 
+              {user && voids.length === 0 && (
+                <div className="px-4 py-4 text-xs text-muted-foreground text-center">
+                  No voids yet. Create one or join with a code.
+                </div>
+              )}
+
               {/* Actions */}
               {user ? (
                 <>
@@ -155,7 +140,7 @@ export function VoidSwitcher({
                     className="w-full flex items-center gap-3 px-4 py-3 hover:bg-muted transition-colors text-left"
                   >
                     <Plus size={16} />
-                    <span className="text-sm font-mono uppercase tracking-wider">Create New Void</span>
+                    <span className="text-sm font-mono uppercase tracking-wider">Create Void</span>
                   </button>
                   <button
                     onClick={() => {
