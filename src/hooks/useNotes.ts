@@ -241,8 +241,7 @@ export function useNotes(voidId: string | null = null) {
                 return { ...dbNote, position: note.position };
               }
               return dbNote;
-            }))
-            ));
+            }));
           } else if (payload.eventType === 'DELETE') {
             const oldN = payload.old as any;
             if (oldNoteVoidId !== voidId) return;
