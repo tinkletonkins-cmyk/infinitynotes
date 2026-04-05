@@ -617,4 +617,4 @@ export const StickyNote = React.memo(function StickyNote({
     </motion.div>
     </NoteContextMenu>
   );
-}
+});
