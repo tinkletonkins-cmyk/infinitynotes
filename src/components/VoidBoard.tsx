@@ -859,46 +859,37 @@ function VoidBoardContent() {
           const boardY = (e.clientY - y) / scale;
           addNote(undefined, { x: boardX - 105, y: boardY - 80 });
         }}      >
-        {notes.map((note) => {
-          const isMatch = noteMatchesSearch(note, searchQuery) && 
-            (selectedTags.length === 0 || selectedTags.some(tag => note.tags.includes(tag)));
+        {filteredNotes.map((note) => {
           const isConnecting = connectingFrom === note.id;
           const isConnectionTarget = connectingFrom !== null && connectingFrom !== note.id;
           
           return (
-            <StickyNote
+            <MemoizedNoteWrapper
               key={note.id}
-              id={note.id}
-              initialText={note.text}
-              initialPosition={note.position}
-              initialRotation={note.rotation}
-              initialColor={note.color}
-              initialShape={note.shape}
-              initialTags={note.tags}
-              isLocked={note.is_locked}
-              lockedBy={note.locked_by}
-              dimmed={(searchQuery.trim() !== '' || selectedTags.length > 0) && !isMatch}
+              note={note}
               isConnecting={isConnecting}
               isConnectionTarget={isConnectionTarget}
-              reactionCounts={getReactionCounts(note.id)}
-              hasUserReacted={(emoji) => hasUserReacted(note.id, emoji)}
-              onReact={(emoji) => handleReact(note.id, emoji)}
-              onDelete={handleDeleteNote}
-              onLock={handleLockNote}
-              onUnlock={handleUnlockNote}
-              onUpdate={handleUpdateNote}
-              onDrop={handleNoteDrop}
-              onStartConnection={handleStartConnection}
-              onCompleteConnection={handleCompleteConnection}
-              onDragStateChange={handleDragStateChange}
-              remoteText={remoteNotes[note.id]?.text}
-              remoteColor={remoteNotes[note.id]?.color}
-              remotePosition={remotePositions[note.id]}
-              onTyping={(text, color) => { broadcastTyping(note.id, text, color); pulseTyping(); }}
-              onTypingComplete={() => clearRemoteNote(note.id)}
-              onPositionChange={(x, y) => broadcastPosition(note.id, x, y)}
-              onPositionComplete={() => clearRemotePosition(note.id)}
-              onEditingChange={(isEditing) => setNoteEditing(note.id, isEditing)}
+              searchQuery={searchQuery}
+              selectedTags={selectedTags}
+              getReactionCounts={getReactionCounts}
+              hasUserReacted={hasUserReacted}
+              handleReact={handleReact}
+              handleDeleteNote={handleDeleteNote}
+              handleLockNote={handleLockNote}
+              handleUnlockNote={handleUnlockNote}
+              handleUpdateNote={handleUpdateNote}
+              handleNoteDrop={handleNoteDrop}
+              handleStartConnection={handleStartConnection}
+              handleCompleteConnection={handleCompleteConnection}
+              handleDragStateChange={handleDragStateChange}
+              remoteNotes={remoteNotes}
+              remotePositions={remotePositions}
+              broadcastTyping={broadcastTyping}
+              broadcastPosition={broadcastPosition}
+              clearRemoteNote={clearRemoteNote}
+              clearRemotePosition={clearRemotePosition}
+              setNoteEditing={setNoteEditing}
+              pulseTyping={pulseTyping}
             />
           );
         })}
