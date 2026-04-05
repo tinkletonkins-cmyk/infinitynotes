@@ -28,12 +28,12 @@ function getRandomRotation(): number {
 }
 
 function getRandomPosition(): { x: number; y: number } {
-  const viewportWidth = window.innerWidth;
-  const viewportHeight = window.innerHeight;
-  
+  // Spread notes across a wide canvas area, not just the viewport
+  const CANVAS_W = 3000;
+  const CANVAS_H = 2000;
   return {
-    x: Math.random() * (viewportWidth - 300) + 50,
-    y: Math.random() * (viewportHeight - 300) + 100,
+    x: Math.random() * CANVAS_W - CANVAS_W / 2 + window.innerWidth / 2,
+    y: Math.random() * CANVAS_H - CANVAS_H / 2 + window.innerHeight / 2,
   };
 }
 
@@ -45,6 +45,8 @@ export function useNotes(voidId: string | null = null) {
   
   // Track which notes are currently being edited locally
   const editingNotesRef = useRef<Set<string>>(new Set());
+  // Track notes that were recently dragged — skip position sync for these
+  const recentlyDraggedRef = useRef<Map<string, number>>(new Map());
   const heartbeatIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // Helper to convert DB row to Note
@@ -148,9 +150,13 @@ export function useNotes(voidId: string | null = null) {
           // Compare key fields
           const hasTextChange = dbNote.text !== localNote.text;
           const hasColorChange = dbNote.color !== localNote.color;
-          const hasPositionChange = 
+          // Skip position sync for recently dragged notes (within 5 seconds)
+          const dragTime = recentlyDraggedRef.current.get(localNote.id);
+          const wasRecentlyDragged = dragTime && (Date.now() - dragTime < 5000);
+          const hasPositionChange = !wasRecentlyDragged && (
             dbNote.position.x !== localNote.position.x || 
-            dbNote.position.y !== localNote.position.y;
+            dbNote.position.y !== localNote.position.y
+          );
           const hasShapeChange = dbNote.shape !== localNote.shape;
           const hasTagsChange = JSON.stringify(dbNote.tags) !== JSON.stringify(localNote.tags);
           const hasLockChange = dbNote.is_locked !== localNote.is_locked || dbNote.locked_by !== localNote.locked_by;
@@ -223,11 +229,19 @@ export function useNotes(voidId: string | null = null) {
             });
           } else if (payload.eventType === 'UPDATE') {
             if (noteVoidId !== voidId) return;
-            // Skip update if note is being locally edited
+            // Skip update if note is being locally edited or recently dragged
             if (editingNotesRef.current.has(n.id)) return;
-            setNotes(prev => prev.map(note => 
-              note.id === n.id ? dbRowToNote(n) : note
-            ));
+            const dragTime = recentlyDraggedRef.current.get(n.id);
+            const wasRecentlyDragged = dragTime && (Date.now() - dragTime < 5000);
+            setNotes(prev => prev.map(note => {
+              if (note.id !== n.id) return note;
+              const dbNote = dbRowToNote(n);
+              // Preserve local position if recently dragged
+              if (wasRecentlyDragged) {
+                return { ...dbNote, position: note.position };
+              }
+              return dbNote;
+            }));
           } else if (payload.eventType === 'DELETE') {
             const oldN = payload.old as any;
             if (oldNoteVoidId !== voidId) return;
@@ -281,6 +295,10 @@ export function useNotes(voidId: string | null = null) {
   }, [voidId]);
 
   const updateNote = useCallback(async (id: string, updates: Partial<Pick<Note, 'text' | 'position' | 'color' | 'parent_id' | 'shape' | 'tags' | 'is_locked' | 'locked_by'>>) => {
+    // Mark as recently dragged to prevent heartbeat snap-back
+    if (updates.position) {
+      recentlyDraggedRef.current.set(id, Date.now());
+    }
     // Optimistic update
     setNotes(prev => prev.map(note => 
       note.id === id ? { ...note, ...updates } : note
