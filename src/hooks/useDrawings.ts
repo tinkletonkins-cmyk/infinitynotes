@@ -84,6 +84,17 @@ export function useDrawings(voidId: string | null = null) {
   }, [voidId]);
 
   const addDrawing = useCallback(async (pathData: string, color: string, strokeWidth: number) => {
+    const tempId = crypto.randomUUID();
+    // Optimistic insert so the drawing appears instantly
+    const optimistic: Drawing = {
+      id: tempId,
+      path_data: pathData,
+      color,
+      stroke_width: strokeWidth,
+      void_id: voidId,
+    };
+    setDrawings(prev => [...prev, optimistic]);
+
     const { data, error } = await supabase.from('board_drawings').insert({
       path_data: pathData,
       color,
@@ -92,6 +103,8 @@ export function useDrawings(voidId: string | null = null) {
     }).select().single();
 
     if (!error && data) {
+      // Replace temp with real ID
+      setDrawings(prev => prev.map(d => d.id === tempId ? { ...d, id: data.id } : d));
       return data.id;
     }
     return null;

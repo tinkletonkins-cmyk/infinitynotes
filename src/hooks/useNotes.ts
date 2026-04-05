@@ -279,9 +279,10 @@ export function useNotes(voidId: string | null = null) {
       is_locked: false,
       locked_by: null,
     };
+    pendingNoteIdsRef.current.add(id);
     setNotes(prev => [...prev, newNote]);
 
-    // Persist to database
+    // Persist to database, then remove from pending
     await supabase.from('notes').insert({
       id,
       text: '',
