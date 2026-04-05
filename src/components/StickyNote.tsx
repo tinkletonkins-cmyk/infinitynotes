@@ -136,23 +136,15 @@ export function StickyNote({
   const emotion: EmotionType = isReceivingRemote ? 'neutral' : localEmotion; // 'neutral' is placeholder when using remote color
   const emotionClass = getEmotionClass(emotion);
 
-  // Sync position from props — only apply if the user hasn't manually moved the note,
-  // or if we're receiving a genuine remote position from another user.
+  // Sync position from props — only apply remote positions, never override local drags
   useEffect(() => {
-    if (isDragging) return;
+    if (isDragging || hasUserPositionedRef.current) return;
 
     if (remotePosition) {
-      // Always sync remote positions (another user moved this note)
       x.set(remotePosition.x);
       y.set(remotePosition.y);
       lastPositionRef.current = remotePosition;
       updatePosition(id, remotePosition);
-    } else if (!hasUserPositionedRef.current) {
-      // Only sync initialPosition on first mount (before user has dragged)
-      x.set(initialPosition.x);
-      y.set(initialPosition.y);
-      lastPositionRef.current = initialPosition;
-      updatePosition(id, initialPosition);
     }
   }, [remotePosition]); // eslint-disable-line react-hooks/exhaustive-deps
 
