@@ -292,6 +292,8 @@ export function useNotes(voidId: string | null = null) {
       parent_id: parentId || null,
       color: null,
       void_id: voidId,
+    }).then(() => {
+      pendingNoteIdsRef.current.delete(id);
     });
 
     return id;
