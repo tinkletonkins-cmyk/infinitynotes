@@ -45,6 +45,8 @@ export function useNotes(voidId: string | null = null) {
   
   // Track which notes are currently being edited locally
   const editingNotesRef = useRef<Set<string>>(new Set());
+  // Track notes that were recently dragged — skip position sync for these
+  const recentlyDraggedRef = useRef<Map<string, number>>(new Map());
   const heartbeatIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // Helper to convert DB row to Note
