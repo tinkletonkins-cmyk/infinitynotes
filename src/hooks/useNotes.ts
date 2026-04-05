@@ -179,9 +179,9 @@ export function useNotes(voidId: string | null = null) {
           }
         });
         
-        // Check for deleted notes
+        // Check for deleted notes — but keep optimistically-added notes that aren't in DB yet
         const dbIds = new Set(dbNotes.map(n => n.id));
-        const filteredNotes = updatedNotes.filter(n => dbIds.has(n.id));
+        const filteredNotes = updatedNotes.filter(n => dbIds.has(n.id) || pendingNoteIdsRef.current.has(n.id));
         if (filteredNotes.length !== updatedNotes.length) {
           hasChanges = true;
         }
