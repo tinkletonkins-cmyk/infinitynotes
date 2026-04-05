@@ -118,9 +118,13 @@ function VoidBoardContent() {
   // Active equipment effects for the current void
   const activeEffects = useActiveEffects(user?.id ?? null, effectiveVoidId);
   
-  // Broadcast cursor position on mouse move
+  // Broadcast cursor position on mouse move — throttled to ~60ms
   useEffect(() => {
+    let lastBroadcast = 0;
     const handleMouseMove = (e: MouseEvent) => {
+      const now = Date.now();
+      if (now - lastBroadcast < 60) return;
+      lastBroadcast = now;
       broadcastCursor(e.clientX, e.clientY);
     };
     
