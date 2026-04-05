@@ -54,11 +54,11 @@ interface StickyNoteProps {
   onEditingChange?: (isEditing: boolean) => void;
 }
 
-// Snappy spring physics for responsive feel
+// Direct tracking — no spring delay
 const springConfig = {
-  stiffness: 600,
-  damping: 20,
-  mass: 0.5,
+  stiffness: 10000,
+  damping: 500,
+  mass: 0.1,
 };
 
 export function StickyNote({ 
