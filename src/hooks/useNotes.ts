@@ -28,12 +28,12 @@ function getRandomRotation(): number {
 }
 
 function getRandomPosition(): { x: number; y: number } {
-  const viewportWidth = window.innerWidth;
-  const viewportHeight = window.innerHeight;
-  
+  // Spread notes across a wide canvas area, not just the viewport
+  const CANVAS_W = 3000;
+  const CANVAS_H = 2000;
   return {
-    x: Math.random() * (viewportWidth - 300) + 50,
-    y: Math.random() * (viewportHeight - 300) + 100,
+    x: Math.random() * CANVAS_W - CANVAS_W / 2 + window.innerWidth / 2,
+    y: Math.random() * CANVAS_H - CANVAS_H / 2 + window.innerHeight / 2,
   };
 }
 
