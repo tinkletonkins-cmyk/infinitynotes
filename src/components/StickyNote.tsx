@@ -61,7 +61,7 @@ const springConfig = {
   mass: 0.1,
 };
 
-export function StickyNote({ 
+export const StickyNote = React.memo(function StickyNote({ 
   id, 
   initialText, 
   initialPosition, 
@@ -617,4 +617,4 @@ export function StickyNote({
     </motion.div>
     </NoteContextMenu>
   );
-}
+});

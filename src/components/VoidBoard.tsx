@@ -95,6 +95,67 @@ function pointToLineDistance(
   return Math.sqrt(dx * dx + dy * dy);
 }
 
+// Wrapper that stabilizes per-note callbacks so StickyNote (React.memo) doesn't re-render unnecessarily
+const MemoizedNoteWrapper = React.memo(function MemoizedNoteWrapper({
+  note, isConnecting, isConnectionTarget, searchQuery, selectedTags,
+  getReactionCounts, hasUserReacted, handleReact, handleDeleteNote,
+  handleLockNote, handleUnlockNote, handleUpdateNote, handleNoteDrop,
+  handleStartConnection, handleCompleteConnection, handleDragStateChange,
+  remoteNotes, remotePositions, broadcastTyping, broadcastPosition,
+  clearRemoteNote, clearRemotePosition, setNoteEditing, pulseTyping,
+}: any) {
+  const isMatch = noteMatchesSearch(note, searchQuery) &&
+    (selectedTags.length === 0 || selectedTags.some((tag: string) => note.tags.includes(tag)));
+  const dimmed = (searchQuery.trim() !== '' || selectedTags.length > 0) && !isMatch;
+
+  const onReact = useCallback((emoji: string) => handleReact(note.id, emoji), [note.id, handleReact]);
+  const onHasUserReacted = useCallback((emoji: string) => hasUserReacted(note.id, emoji), [note.id, hasUserReacted]);
+  const onTyping = useCallback((text: string, color: string | null) => {
+    broadcastTyping(note.id, text, color);
+    pulseTyping();
+  }, [note.id, broadcastTyping, pulseTyping]);
+  const onTypingComplete = useCallback(() => clearRemoteNote(note.id), [note.id, clearRemoteNote]);
+  const onPositionChange = useCallback((x: number, y: number) => broadcastPosition(note.id, x, y), [note.id, broadcastPosition]);
+  const onPositionComplete = useCallback(() => clearRemotePosition(note.id), [note.id, clearRemotePosition]);
+  const onEditingChange = useCallback((isEditing: boolean) => setNoteEditing(note.id, isEditing), [note.id, setNoteEditing]);
+
+  return (
+    <StickyNote
+      id={note.id}
+      initialText={note.text}
+      initialPosition={note.position}
+      initialRotation={note.rotation}
+      initialColor={note.color}
+      initialShape={note.shape}
+      initialTags={note.tags}
+      isLocked={note.is_locked}
+      lockedBy={note.locked_by}
+      dimmed={dimmed}
+      isConnecting={isConnecting}
+      isConnectionTarget={isConnectionTarget}
+      reactionCounts={getReactionCounts(note.id)}
+      hasUserReacted={onHasUserReacted}
+      onReact={onReact}
+      onDelete={handleDeleteNote}
+      onLock={handleLockNote}
+      onUnlock={handleUnlockNote}
+      onUpdate={handleUpdateNote}
+      onDrop={handleNoteDrop}
+      onStartConnection={handleStartConnection}
+      onCompleteConnection={handleCompleteConnection}
+      onDragStateChange={handleDragStateChange}
+      remoteText={remoteNotes[note.id]?.text}
+      remoteColor={remoteNotes[note.id]?.color}
+      remotePosition={remotePositions[note.id]}
+      onTyping={onTyping}
+      onTypingComplete={onTypingComplete}
+      onPositionChange={onPositionChange}
+      onPositionComplete={onPositionComplete}
+      onEditingChange={onEditingChange}
+    />
+  );
+});
+
 function VoidBoardContent() {
   const { user, signOut } = useAuth();
   const { voids, createVoid, deleteVoid, joinVoidByCode } = useVoids(user?.id ?? null);
@@ -118,9 +179,13 @@ function VoidBoardContent() {
   // Active equipment effects for the current void
   const activeEffects = useActiveEffects(user?.id ?? null, effectiveVoidId);
   
-  // Broadcast cursor position on mouse move
+  // Broadcast cursor position on mouse move — throttled to ~60ms
   useEffect(() => {
+    let lastBroadcast = 0;
     const handleMouseMove = (e: MouseEvent) => {
+      const now = Date.now();
+      if (now - lastBroadcast < 60) return;
+      lastBroadcast = now;
       broadcastCursor(e.clientX, e.clientY);
     };
     
@@ -855,46 +920,37 @@ function VoidBoardContent() {
           const boardY = (e.clientY - y) / scale;
           addNote(undefined, { x: boardX - 105, y: boardY - 80 });
         }}      >
-        {notes.map((note) => {
-          const isMatch = noteMatchesSearch(note, searchQuery) && 
-            (selectedTags.length === 0 || selectedTags.some(tag => note.tags.includes(tag)));
+        {filteredNotes.map((note) => {
           const isConnecting = connectingFrom === note.id;
           const isConnectionTarget = connectingFrom !== null && connectingFrom !== note.id;
           
           return (
-            <StickyNote
+            <MemoizedNoteWrapper
               key={note.id}
-              id={note.id}
-              initialText={note.text}
-              initialPosition={note.position}
-              initialRotation={note.rotation}
-              initialColor={note.color}
-              initialShape={note.shape}
-              initialTags={note.tags}
-              isLocked={note.is_locked}
-              lockedBy={note.locked_by}
-              dimmed={(searchQuery.trim() !== '' || selectedTags.length > 0) && !isMatch}
+              note={note}
               isConnecting={isConnecting}
               isConnectionTarget={isConnectionTarget}
-              reactionCounts={getReactionCounts(note.id)}
-              hasUserReacted={(emoji) => hasUserReacted(note.id, emoji)}
-              onReact={(emoji) => handleReact(note.id, emoji)}
-              onDelete={handleDeleteNote}
-              onLock={handleLockNote}
-              onUnlock={handleUnlockNote}
-              onUpdate={handleUpdateNote}
-              onDrop={handleNoteDrop}
-              onStartConnection={handleStartConnection}
-              onCompleteConnection={handleCompleteConnection}
-              onDragStateChange={handleDragStateChange}
-              remoteText={remoteNotes[note.id]?.text}
-              remoteColor={remoteNotes[note.id]?.color}
-              remotePosition={remotePositions[note.id]}
-              onTyping={(text, color) => { broadcastTyping(note.id, text, color); pulseTyping(); }}
-              onTypingComplete={() => clearRemoteNote(note.id)}
-              onPositionChange={(x, y) => broadcastPosition(note.id, x, y)}
-              onPositionComplete={() => clearRemotePosition(note.id)}
-              onEditingChange={(isEditing) => setNoteEditing(note.id, isEditing)}
+              searchQuery={searchQuery}
+              selectedTags={selectedTags}
+              getReactionCounts={getReactionCounts}
+              hasUserReacted={hasUserReacted}
+              handleReact={handleReact}
+              handleDeleteNote={handleDeleteNote}
+              handleLockNote={handleLockNote}
+              handleUnlockNote={handleUnlockNote}
+              handleUpdateNote={handleUpdateNote}
+              handleNoteDrop={handleNoteDrop}
+              handleStartConnection={handleStartConnection}
+              handleCompleteConnection={handleCompleteConnection}
+              handleDragStateChange={handleDragStateChange}
+              remoteNotes={remoteNotes}
+              remotePositions={remotePositions}
+              broadcastTyping={broadcastTyping}
+              broadcastPosition={broadcastPosition}
+              clearRemoteNote={clearRemoteNote}
+              clearRemotePosition={clearRemotePosition}
+              setNoteEditing={setNoteEditing}
+              pulseTyping={pulseTyping}
             />
           );
         })}
