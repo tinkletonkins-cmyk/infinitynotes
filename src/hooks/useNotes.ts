@@ -2,8 +2,8 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { NoteShape } from '@/components/NoteShapePicker';
 
-// High-speed sync interval (1.2 seconds - Discord/Slack level)
-const HEARTBEAT_INTERVAL_MS = 1200;
+// Sync interval — 5s is enough since we have realtime subscriptions
+const HEARTBEAT_INTERVAL_MS = 5000;
 
 export interface Note {
   id: string;

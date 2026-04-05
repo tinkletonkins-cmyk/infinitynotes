@@ -9,7 +9,7 @@ interface BoardThemePickerProps {
   onThemeSelect: (theme: BoardTheme) => void;
 }
 
-const themes: { id: BoardTheme; name: string; preview: string }[] = [
+export const themes: { id: BoardTheme; name: string; preview: string }[] = [
   { id: 'void',      name: 'The Void',   preview: 'linear-gradient(135deg, #000 0%, #111 100%)' },
   { id: 'board',     name: 'Cork Board', preview: 'linear-gradient(135deg, #b8956e 0%, #987545 100%)' },
   { id: 'wavy',      name: 'Wavy Night', preview: 'linear-gradient(135deg, #1a1a2e 0%, #2d2d44 100%)' },
