@@ -229,10 +229,19 @@ export function useNotes(voidId: string | null = null) {
             });
           } else if (payload.eventType === 'UPDATE') {
             if (noteVoidId !== voidId) return;
-            // Skip update if note is being locally edited
+            // Skip update if note is being locally edited or recently dragged
             if (editingNotesRef.current.has(n.id)) return;
-            setNotes(prev => prev.map(note => 
-              note.id === n.id ? dbRowToNote(n) : note
+            const dragTime = recentlyDraggedRef.current.get(n.id);
+            const wasRecentlyDragged = dragTime && (Date.now() - dragTime < 5000);
+            setNotes(prev => prev.map(note => {
+              if (note.id !== n.id) return note;
+              const dbNote = dbRowToNote(n);
+              // Preserve local position if recently dragged
+              if (wasRecentlyDragged) {
+                return { ...dbNote, position: note.position };
+              }
+              return dbNote;
+            }))
             ));
           } else if (payload.eventType === 'DELETE') {
             const oldN = payload.old as any;
