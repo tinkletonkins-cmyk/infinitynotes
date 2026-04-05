@@ -156,7 +156,7 @@ const MemoizedNoteWrapper = React.memo(function MemoizedNoteWrapper({
   );
 });
 
-
+function VoidBoardContent() {
   const { user, signOut } = useAuth();
   const { voids, createVoid, deleteVoid, joinVoidByCode } = useVoids(user?.id ?? null);
   const { toast } = useToast();
