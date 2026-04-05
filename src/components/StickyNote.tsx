@@ -113,6 +113,8 @@ export function StickyNote({
   const pendingTextRef = useRef<string>(initialText);
   // Track whether user has manually positioned this note — prevent prop sync from snapping it back
   const hasUserPositionedRef = useRef(false);
+  // Track mounted state to prevent saves after unmount
+  const isMountedRef = useRef(true);
   
   const { updatePosition, positions } = useNotePositions();
   const { snapPosition } = useSnapToAlign(positions, id);
@@ -156,9 +158,9 @@ export function StickyNote({
     updatePosition(id, initialPosition);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Sync color and shape from props
+  // Sync color from props — but never overwrite with null if we already have a color
   useEffect(() => {
-    setColor(initialColor);
+    if (initialColor !== null) setColor(initialColor);
   }, [initialColor]);
 
   useEffect(() => {
@@ -172,13 +174,13 @@ export function StickyNote({
 
   // Debounced draft save - saves to database every 2 seconds while typing
   const saveDraftToDatabase = useCallback(async (draftText: string) => {
+    if (!isMountedRef.current) return;
     const now = Date.now();
     // Prevent saving too frequently
     if (now - lastDraftSaveRef.current < DRAFT_SAVE_INTERVAL_MS) return;
     
     lastDraftSaveRef.current = now;
     
-    // Use upsert to avoid duplicates - updates if exists, inserts if not
     await supabase
       .from('notes')
       .update({ text: draftText })
@@ -212,8 +214,13 @@ export function StickyNote({
 
   // Save immediately when user stops editing (blur or component unmount)
   useEffect(() => {
+    isMountedRef.current = true;
     return () => {
-      // On unmount, save any pending text immediately
+      isMountedRef.current = false;
+      // On unmount, cancel pending timer and save any unsaved text synchronously via beacon
+      if (draftSaveTimerRef.current) {
+        clearTimeout(draftSaveTimerRef.current);
+      }
       if (pendingTextRef.current !== lastSavedText) {
         supabase
           .from('notes')
@@ -484,31 +491,53 @@ export function StickyNote({
         </div>
 
         {/* Text area */}
-        <textarea
-          value={isLocallyEditing ? text : (remoteText !== undefined ? remoteText : text)}
-          onChange={(e) => {
-            setIsLocallyEditing(true);
-            setText(e.target.value);
-            onTyping?.(e.target.value, color);
-          }}
-          onFocus={() => {
-            setIsLocallyEditing(true);
-            onEditingChange?.(true);
-          }}
-          onBlur={() => {
-            // Delay clearing to allow save to complete
-            setTimeout(() => {
-              setIsLocallyEditing(false);
-              onEditingChange?.(false);
-            }, 600);
-          }}
-          placeholder="type your thoughts..."
-          className="w-full h-[115px] p-3 bg-transparent resize-none focus:outline-none placeholder:opacity-50 font-handwriting"
-          style={{ color: 'inherit', fontFamily: "'Caveat', cursive", fontSize: '1.25rem' }}
-        />
-        {/* Remote typing indicator */}
+        <div className="relative">
+          <textarea
+            value={text}
+            onChange={(e) => {
+              setIsLocallyEditing(true);
+              setText(e.target.value);
+              onTyping?.(e.target.value, color);
+            }}
+            onFocus={() => {
+              setIsLocallyEditing(true);
+              onEditingChange?.(true);
+            }}
+            onBlur={() => {
+              setTimeout(() => {
+                setIsLocallyEditing(false);
+                onEditingChange?.(false);
+              }, 600);
+            }}
+            placeholder="type your thoughts..."
+            className="w-full h-[115px] p-3 bg-transparent resize-none focus:outline-none placeholder:opacity-50 font-handwriting"
+            style={{ color: 'inherit', fontFamily: "'Caveat', cursive", fontSize: '1.25rem' }}
+          />
+
+          {/* Remote live typing overlay — shown when someone else is typing this note */}
+          {remoteText !== undefined && !isLocallyEditing && (
+            <div
+              className="absolute inset-0 p-3 pointer-events-none overflow-hidden"
+              style={{ fontFamily: "'Caveat', cursive", fontSize: '1.25rem', lineHeight: 1.5 }}
+            >
+              {/* Dim the local text */}
+              <div className="absolute inset-0 bg-current opacity-10" />
+              {/* Show remote text */}
+              <span className="relative whitespace-pre-wrap break-words opacity-90">
+                {remoteText}
+              </span>
+              {/* Blinking cursor at end */}
+              <span
+                className="relative inline-block w-[2px] h-[1.1em] bg-current align-middle ml-[1px]"
+                style={{ animation: 'blink 1s step-end infinite' }}
+              />
+            </div>
+          )}
+        </div>
+
+        {/* Remote typing badge */}
         {remoteText !== undefined && !isLocallyEditing && (
-          <div className="absolute top-12 right-2 flex items-center gap-1 text-xs opacity-70">
+          <div className="absolute top-10 right-2 flex items-center gap-1 text-[9px] font-mono uppercase tracking-widest opacity-60">
             <TypingIndicator />
           </div>
         )}

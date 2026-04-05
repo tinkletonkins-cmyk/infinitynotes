@@ -134,7 +134,7 @@ export function AmbientSound({ noteCount }: AmbientSoundProps) {
   return (
     <button
       onClick={toggleSound}
-      className="fixed top-32 left-4 z-50 flex items-center gap-2 px-3 py-2 border border-foreground bg-background hover:bg-foreground hover:text-background transition-colors"
+      className="fixed top-32 left-4 z-30 flex items-center gap-2 px-3 py-2 border border-foreground bg-background hover:bg-foreground hover:text-background transition-colors"
       title={isPlaying ? 'Mute ambient sounds' : 'Play ambient sounds'}
     >
       {isPlaying ? <Volume2 size={14} /> : <VolumeX size={14} />}

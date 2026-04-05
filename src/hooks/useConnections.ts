@@ -121,7 +121,10 @@ export function useConnections(voidId: string | null = null) {
     // Optimistic update
     setConnections(prev => prev.filter(c => c.id !== id));
     
-    await supabase.from('note_connections').delete().eq('id', id);
+    const { error } = await supabase.from('note_connections').delete().eq('id', id);
+    if (error) {
+      console.error('[useConnections] Failed to remove connection:', error);
+    }
   }, []);
 
   const removeConnectionsForNote = useCallback(async (noteId: string) => {
@@ -134,10 +137,13 @@ export function useConnections(voidId: string | null = null) {
       c.from_note_id !== noteId && c.to_note_id !== noteId
     ));
     
-    // Delete from database
-    for (const conn of toRemove) {
-      await supabase.from('note_connections').delete().eq('id', conn.id);
-    }
+    // Delete all in parallel
+    const results = await Promise.all(
+      toRemove.map(conn => supabase.from('note_connections').delete().eq('id', conn.id))
+    );
+    results.forEach(({ error }) => {
+      if (error) console.error('[useConnections] Failed to remove connection:', error);
+    });
   }, [connections]);
 
   return { connections, isLoading, addConnection, removeConnection, removeConnectionsForNote };

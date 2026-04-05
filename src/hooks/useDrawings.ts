@@ -112,15 +112,19 @@ export function useDrawings(voidId: string | null = null) {
 
   const deleteDrawing = useCallback(async (id: string) => {
     setDrawings(prev => prev.filter(d => d.id !== id));
-    await supabase.from('board_drawings').delete().eq('id', id);
+    const { error } = await supabase.from('board_drawings').delete().eq('id', id);
+    if (error) console.error('[useDrawings] Failed to delete drawing:', error);
   }, []);
 
   const clearAllDrawings = useCallback(async () => {
     const ids = drawings.map(d => d.id);
     setDrawings([]);
-    for (const id of ids) {
-      await supabase.from('board_drawings').delete().eq('id', id);
-    }
+    const results = await Promise.all(
+      ids.map(id => supabase.from('board_drawings').delete().eq('id', id))
+    );
+    results.forEach(({ error }) => {
+      if (error) console.error('[useDrawings] Failed to delete drawing:', error);
+    });
   }, [drawings]);
 
   return { drawings, isLoading, addDrawing, deleteDrawing, clearAllDrawings };

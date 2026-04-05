@@ -58,14 +58,14 @@ export function VoidSwitcher({
         {isOpen && (
           <>
             <div 
-              className="fixed inset-0 z-40" 
+              className="fixed inset-0 z-[199]" 
               onClick={() => setIsOpen(false)} 
             />
             <motion.div
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
-              className="absolute top-full left-0 mt-2 w-72 border border-foreground bg-background z-50 shadow-lg"
+              className="absolute top-full left-0 mt-2 w-72 border border-foreground bg-background z-[200] shadow-lg"
             >
               {/* User's private voids */}
               {user && voids.length > 0 && (

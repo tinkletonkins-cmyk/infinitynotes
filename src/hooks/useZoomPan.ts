@@ -18,30 +18,41 @@ export function useZoomPan() {
   const middleMouseDown = useRef(false);
 
   const handleWheel = useCallback((e: WheelEvent) => {
-    // Cmd/Ctrl + Scroll to zoom
-    if (e.metaKey || e.ctrlKey) {
-      e.preventDefault();
-      const delta = e.deltaY > 0 ? -ZOOM_STEP : ZOOM_STEP;
-      
-      setState((prev) => {
-        const newScale = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, prev.scale + delta));
-        
-        // Zoom toward cursor position
-        const rect = (e.target as HTMLElement).getBoundingClientRect?.();
-        if (rect) {
-          const mouseX = e.clientX - rect.left;
-          const mouseY = e.clientY - rect.top;
-          
-          const scaleRatio = newScale / prev.scale;
-          const newX = mouseX - (mouseX - prev.x) * scaleRatio;
-          const newY = mouseY - (mouseY - prev.y) * scaleRatio;
-          
-          return { scale: newScale, x: newX, y: newY };
-        }
-        
-        return { ...prev, scale: newScale };
-      });
+    e.preventDefault();
+
+    // Two-finger trackpad pan: no modifier key, deltaMode 0 (pixels), small deltas
+    const isTrackpadPan = !e.ctrlKey && !e.metaKey && e.deltaMode === 0;
+
+    if (isTrackpadPan) {
+      setState(prev => ({
+        ...prev,
+        x: prev.x - e.deltaX,
+        y: prev.y - e.deltaY,
+      }));
+      return;
     }
+
+    // Ctrl/Cmd + scroll (or pinch-to-zoom on trackpad which sends ctrlKey=true)
+    const delta = e.deltaY > 0 ? -ZOOM_STEP : ZOOM_STEP;
+
+    setState((prev) => {
+      const newScale = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, prev.scale + delta));
+      
+      // Zoom toward cursor position
+      const rect = (e.target as HTMLElement).getBoundingClientRect?.();
+      if (rect) {
+        const mouseX = e.clientX - rect.left;
+        const mouseY = e.clientY - rect.top;
+        
+        const scaleRatio = newScale / prev.scale;
+        const newX = mouseX - (mouseX - prev.x) * scaleRatio;
+        const newY = mouseY - (mouseY - prev.y) * scaleRatio;
+        
+        return { scale: newScale, x: newX, y: newY };
+      }
+      
+      return { ...prev, scale: newScale };
+    });
   }, []);
 
   const handleMouseDown = useCallback((e: MouseEvent) => {

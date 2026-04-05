@@ -147,7 +147,7 @@
     background-image: 
       radial-gradient(circle at 1px 1px, hsl(0 0% 15%) 1px, transparent 0);
     background-size: 40px 40px;
-    cursor: grab;
+    cursor: none;
   }
   
   /* Cork board texture */
@@ -257,8 +257,8 @@
     );
   }
   
-  .void-board:active {
-    cursor: grabbing;
+  .void-board, .void-board * {
+    cursor: none !important;
   }
   
   /* Mode toggle switch */
@@ -337,6 +337,36 @@
     backface-visibility: hidden;
     will-change: transform;
     transform-origin: 0 0;
+  }
+
+  /* Note skeleton shimmer */
+  .note-skeleton {
+    @apply absolute w-[210px] border border-foreground/20 bg-foreground/5;
+    height: 160px;
+  }
+
+  .note-skeleton::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      hsl(0 0% 100% / 0.06) 50%,
+      transparent 100%
+    );
+    background-size: 200% 100%;
+    animation: skeleton-shimmer 1.4s ease-in-out infinite;
+  }
+
+  @keyframes skeleton-shimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+  }
+
+  @keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0; }
   }
 
   /* Void Navigator cosmic background */

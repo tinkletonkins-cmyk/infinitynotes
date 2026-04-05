@@ -37,6 +37,15 @@ function getRandomPosition(): { x: number; y: number } {
   };
 }
 
+function getRandomNoteColor(): string {
+  const colors = [
+    '#FFEB3B', '#FF5722', '#2196F3', '#4CAF50',
+    '#FF9800', '#9C27B0', '#E91E63', '#00BCD4',
+    '#FFFFFF', '#607D8B',
+  ];
+  return colors[Math.floor(Math.random() * colors.length)];
+}
+
 export function useNotes(voidId: string | null = null) {
   const [notes, setNotes] = useState<Note[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -194,6 +203,14 @@ export function useNotes(voidId: string | null = null) {
     const intervalId = setInterval(heartbeatSync, HEARTBEAT_INTERVAL_MS);
     heartbeatIntervalRef.current = intervalId;
     
+    // Periodically clean up stale recentlyDragged entries (older than 10s)
+    const dragCleanupId = setInterval(() => {
+      const now = Date.now();
+      recentlyDraggedRef.current.forEach((time, id) => {
+        if (now - time > 10000) recentlyDraggedRef.current.delete(id);
+      });
+    }, 10000);
+    
     // Also sync when tab becomes visible again
     const handleVisibilityChange = () => {
       if (!document.hidden) {
@@ -205,6 +222,7 @@ export function useNotes(voidId: string | null = null) {
     // Cleanup on unmount or when leaving the site
     return () => {
       clearInterval(intervalId);
+      clearInterval(dragCleanupId);
       heartbeatIntervalRef.current = null;
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
@@ -264,15 +282,15 @@ export function useNotes(voidId: string | null = null) {
       ? { x: parentPosition.x + 20, y: parentPosition.y + 20 }
       : getRandomPosition();
     const rotation = getRandomRotation();
+    const color = getRandomNoteColor();
 
-    // Optimistic update
     const newNote: Note = {
       id,
       text: '',
       position,
       rotation,
       parent_id: parentId || null,
-      color: null,
+      color,
       shape: 'square',
       void_id: voidId,
       tags: [],
@@ -282,19 +300,26 @@ export function useNotes(voidId: string | null = null) {
     pendingNoteIdsRef.current.add(id);
     setNotes(prev => [...prev, newNote]);
 
-    // Persist to database, then remove from pending
-    await supabase.from('notes').insert({
+    const { error } = await supabase.from('notes').insert({
       id,
       text: '',
       position_x: position.x,
       position_y: position.y,
       rotation,
       parent_id: parentId || null,
-      color: null,
+      color,
       void_id: voidId,
-    }).then(() => {
-      pendingNoteIdsRef.current.delete(id);
     });
+
+    // Always clean up pending ref, whether insert succeeded or failed
+    pendingNoteIdsRef.current.delete(id);
+
+    if (error) {
+      console.error('[useNotes] Failed to insert note:', error);
+      // Rollback optimistic update
+      setNotes(prev => prev.filter(n => n.id !== id));
+      return null;
+    }
 
     return id;
   }, [voidId]);
@@ -323,15 +348,20 @@ export function useNotes(voidId: string | null = null) {
     if (updates.is_locked !== undefined) dbUpdates.is_locked = updates.is_locked;
     if (updates.locked_by !== undefined) dbUpdates.locked_by = updates.locked_by;
 
-    await supabase.from('notes').update(dbUpdates).eq('id', id);
+    const { error } = await supabase.from('notes').update(dbUpdates).eq('id', id);
+    if (error) {
+      console.error('[useNotes] Failed to update note:', error);
+    }
   }, []);
 
   const deleteNote = useCallback(async (id: string) => {
     // Optimistic update
     setNotes(prev => prev.filter(note => note.id !== id));
     
-    // Delete from database
-    await supabase.from('notes').delete().eq('id', id);
+    const { error } = await supabase.from('notes').delete().eq('id', id);
+    if (error) {
+      console.error('[useNotes] Failed to delete note:', error);
+    }
   }, []);
 
   return { notes, isLoading, isSyncing, lastSyncTime, addNote, updateNote, deleteNote, setNoteEditing };

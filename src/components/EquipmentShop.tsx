@@ -48,14 +48,8 @@ function TierStars({ tier }: { tier: number }) {
 }
 
 function EquipmentCard({
-  item,
-  isOwned,
-  isActive,
-  canAfford,
-  isPurchasing,
-  onPurchase,
-  onActivate,
-  onDeactivate,
+  item, isOwned, isActive, canAfford, isPurchasing,
+  onPurchase, onActivate, onDeactivate,
 }: {
   item: EquipmentItem;
   isOwned: boolean;
@@ -66,61 +60,68 @@ function EquipmentCard({
   onActivate: () => void;
   onDeactivate: () => void;
 }) {
-  const tierClass = item.tier === 3
-    ? 'equipment-tier-3'
-    : item.tier === 2
-      ? 'equipment-tier-2'
-      : '';
-
   return (
-    <div
-      className={`p-4 border flex flex-col gap-2 transition-colors ${tierClass} ${
-        isActive
-          ? 'border-purple-400/50 bg-purple-500/10'
-          : 'border-foreground/20 bg-foreground/5'
-      }`}
-    >
-      <div className="flex items-start justify-between">
-        <div className="p-2 border border-foreground/10 bg-foreground/5">
+    <div className={`flex flex-col border transition-colors ${
+      isActive ? 'border-yellow-400/40 bg-yellow-400/5' : 'border-foreground/15 bg-foreground/[0.03]'
+    }`}>
+      {/* Card top */}
+      <div className="p-4 flex items-start justify-between gap-2">
+        <div className="p-2 border border-foreground/10">
           <DynamicIcon name={item.icon} size={18} />
         </div>
-        <div className="flex flex-col items-end gap-1">
+        <div className="flex flex-col items-end gap-1.5">
           <TierStars tier={item.tier} />
           {isActive && (
-            <span className="text-[8px] font-mono uppercase tracking-widest text-purple-400 animate-pulse">
-              ● Active
-            </span>
+            <span className="text-[8px] font-mono uppercase tracking-widest text-yellow-400">● live</span>
+          )}
+          {isOwned && !isActive && (
+            <span className="text-[8px] font-mono uppercase tracking-widest text-foreground/40">owned</span>
           )}
         </div>
       </div>
-      <h3 className="text-xs font-mono uppercase tracking-wider text-foreground">{item.name}</h3>
-      <p className="text-[10px] text-muted-foreground leading-relaxed flex-1">{item.description}</p>
-      <div className="flex items-center justify-between mt-1">
-        <span className="flex items-center gap-1 text-[10px] font-mono text-purple-300/80">
-          <Zap size={10} /> {item.energy_cost}
-        </span>
+
+      {/* Name + description */}
+      <div className="px-4 pb-3 flex-1">
+        <h3 className="text-[11px] font-mono uppercase tracking-wider mb-1">{item.name}</h3>
+        <p className="text-[10px] text-foreground/50 leading-relaxed">{item.description}</p>
+      </div>
+
+      {/* Price + action */}
+      <div className="border-t border-foreground/10 px-4 py-2.5 flex items-center justify-between">
         {!isOwned ? (
-          <button
-            onClick={onPurchase}
-            disabled={!canAfford || isPurchasing}
-            className="btn-brutalist text-[10px] px-2 py-1 disabled:opacity-30 disabled:cursor-not-allowed"
-          >
-            Acquire
-          </button>
+          <>
+            <span className="flex items-center gap-1 text-[11px] font-mono text-yellow-300/80">
+              <Zap size={10} className="text-yellow-400" />
+              {item.energy_cost}
+            </span>
+            <button
+              onClick={onPurchase}
+              disabled={!canAfford || isPurchasing}
+              className="text-[10px] font-mono uppercase tracking-widest px-3 py-1 border border-foreground hover:bg-foreground hover:text-background transition-colors disabled:opacity-25 disabled:cursor-not-allowed"
+            >
+              Buy
+            </button>
+          </>
         ) : isActive ? (
-          <button
-            onClick={onDeactivate}
-            className="flex items-center gap-1 px-2 py-1 text-[10px] font-mono uppercase tracking-widest border border-foreground/20 text-muted-foreground hover:bg-foreground hover:text-background transition-colors"
-          >
-            Stop
-          </button>
+          <>
+            <span className="text-[10px] font-mono text-yellow-400/60 uppercase tracking-widest">Active</span>
+            <button
+              onClick={onDeactivate}
+              className="text-[10px] font-mono uppercase tracking-widest px-3 py-1 border border-foreground/20 text-foreground/50 hover:bg-foreground hover:text-background transition-colors"
+            >
+              Stop
+            </button>
+          </>
         ) : (
-          <button
-            onClick={onActivate}
-            className="flex items-center gap-1 px-2 py-1 text-[10px] font-mono uppercase tracking-widest border border-purple-400/40 text-purple-300 hover:bg-purple-500/20 transition-colors"
-          >
-            Use
-          </button>
+          <>
+            <span className="text-[10px] font-mono text-foreground/30 uppercase tracking-widest">Ready</span>
+            <button
+              onClick={onActivate}
+              className="text-[10px] font-mono uppercase tracking-widest px-3 py-1 border border-foreground hover:bg-foreground hover:text-background transition-colors"
+            >
+              Use
+            </button>
+          </>
         )}
       </div>
     </div>
@@ -133,25 +134,19 @@ export function EquipmentShop({ isOpen, onClose, userId, currentVoidId }: Equipm
 
   const ownedIds = useMemo(() => new Set(owned.map(o => o.equipment_id)), [owned]);
 
-  // Map equipment_id -> player_equipment_id for active items in the current void
   const activeMap = useMemo(() => {
-    const map = new Map<string, string>(); // equipment_id -> player_equipment_id
+    const map = new Map<string, string>();
     for (const oe of owned) {
-      if (oe.void_id === currentVoidId) {
-        map.set(oe.equipment_id, oe.id);
-      }
+      if (oe.void_id === currentVoidId) map.set(oe.equipment_id, oe.id);
     }
     return map;
   }, [owned, currentVoidId]);
 
-  // Player equipment id for a given catalog item (used to install/uninstall)
   const getOwnedEntry = (equipmentId: string) =>
     owned.find(o => o.equipment_id === equipmentId);
 
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-    };
+    const handleKeyDown = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
     if (isOpen) window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, onClose]);
@@ -159,7 +154,7 @@ export function EquipmentShop({ isOpen, onClose, userId, currentVoidId }: Equipm
   const handlePurchase = async (equipmentId: string) => {
     try {
       await purchaseEquipment(equipmentId);
-      toast({ title: 'Module acquired', description: 'Press Use to activate it now.' });
+      toast({ title: 'Module acquired', description: 'Press Use to activate it.' });
     } catch (err: any) {
       toast({ title: 'Acquisition failed', description: err.message, variant: 'destructive' });
     }
@@ -170,7 +165,7 @@ export function EquipmentShop({ isOpen, onClose, userId, currentVoidId }: Equipm
     if (!entry || !currentVoidId) return;
     try {
       await installEquipment(entry.id, currentVoidId);
-      toast({ title: 'Module activated', description: 'Effect is now live on this board.' });
+      toast({ title: 'Module activated' });
     } catch {
       toast({ title: 'Activation failed', variant: 'destructive' });
     }
@@ -194,59 +189,53 @@ export function EquipmentShop({ isOpen, onClose, userId, currentVoidId }: Equipm
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          transition={{ duration: 0.3 }}
-          className="fixed inset-0 z-[200] void-navigator-bg flex flex-col"
+          transition={{ duration: 0.2 }}
+          className="fixed inset-0 z-[200] bg-background/95 flex flex-col"
         >
-          <motion.div
-            initial={{ scale: 0.98, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            exit={{ scale: 0.98, opacity: 0 }}
-            transition={{ duration: 0.2, delay: 0.1 }}
-            className="relative w-full h-full border-2 border-foreground bg-background flex flex-col overflow-hidden"
-          >
-            {/* Header */}
-            <div className="flex items-center justify-between p-4 border-b border-foreground/20">
-              <h2 className="text-xs uppercase tracking-[0.5em] text-purple-300/60 font-mono">
-                Equipment Bay
-              </h2>
-              <div className="flex items-center gap-4">
-                <span className="flex items-center gap-1.5 text-xs font-mono text-purple-300/80">
-                  <Zap size={12} className="text-yellow-400" />
-                  {energy}
-                </span>
-                <button
-                  onClick={onClose}
-                  className="p-1 hover:bg-foreground hover:text-background transition-colors"
-                >
-                  <X size={16} />
-                </button>
-              </div>
+          {/* Shop header — storefront feel */}
+          <div className="border-b border-foreground/20 px-6 py-4 flex items-center justify-between">
+            <div>
+              <p className="text-[10px] font-mono uppercase tracking-[0.4em] text-foreground/40 mb-0.5">The Void</p>
+              <h1 className="text-lg font-mono uppercase tracking-[0.3em]">Equipment Bay</h1>
             </div>
+            {/* Currency display */}
+            <div className="flex items-center gap-6">
+              <div className="flex items-center gap-2 border border-yellow-400/30 bg-yellow-400/5 px-3 py-1.5">
+                <Zap size={12} className="text-yellow-400" />
+                <span className="text-sm font-mono text-yellow-300">{energy}</span>
+                <span className="text-[10px] font-mono uppercase tracking-widest text-foreground/40">energy</span>
+              </div>
+              <button
+                onClick={onClose}
+                className="p-1.5 border border-foreground/20 hover:bg-foreground hover:text-background transition-colors"
+              >
+                <X size={15} />
+              </button>
+            </div>
+          </div>
 
-            {/* Content */}
-            <div className="flex-1 overflow-y-auto p-4">
-              <Tabs defaultValue="link">
-                <TabsList className="w-full bg-foreground/5 border border-foreground/10 mb-4">
-                  {CATEGORIES.map(cat => (
+          {/* Content */}
+          <div className="flex-1 overflow-y-auto">
+            <Tabs defaultValue="link" className="h-full flex flex-col">
+              {/* Category tabs */}
+              <div className="border-b border-foreground/10 px-6">
+                <TabsList className="bg-transparent border-0 gap-0 h-auto p-0">
+                  {[...CATEGORIES, { key: 'inventory', label: 'Inventory' }].map(cat => (
                     <TabsTrigger
                       key={cat.key}
                       value={cat.key}
-                      className="flex-1 text-[10px] uppercase tracking-widest font-mono data-[state=active]:bg-purple-500/20 data-[state=active]:text-purple-300"
+                      className="px-4 py-3 text-[10px] uppercase tracking-widest font-mono bg-transparent border-0 border-b-2 border-transparent data-[state=active]:border-foreground data-[state=active]:text-foreground data-[state=inactive]:text-foreground/40 rounded-none"
                     >
                       {cat.label}
                     </TabsTrigger>
                   ))}
-                  <TabsTrigger
-                    value="inventory"
-                    className="flex-1 text-[10px] uppercase tracking-widest font-mono data-[state=active]:bg-purple-500/20 data-[state=active]:text-purple-300"
-                  >
-                    Inventory
-                  </TabsTrigger>
                 </TabsList>
+              </div>
 
+              <div className="flex-1 overflow-y-auto p-6">
                 {CATEGORIES.map(cat => (
-                  <TabsContent key={cat.key} value={cat.key}>
-                    <div className="grid grid-cols-2 gap-3">
+                  <TabsContent key={cat.key} value={cat.key} className="mt-0">
+                    <div className="grid grid-cols-2 gap-4 md:grid-cols-3">
                       {catalog
                         .filter(item => item.category === cat.key)
                         .map(item => (
@@ -266,7 +255,7 @@ export function EquipmentShop({ isOpen, onClose, userId, currentVoidId }: Equipm
                   </TabsContent>
                 ))}
 
-                <TabsContent value="inventory">
+                <TabsContent value="inventory" className="mt-0">
                   <EquipmentInventory
                     owned={owned}
                     catalog={catalog}
@@ -275,9 +264,9 @@ export function EquipmentShop({ isOpen, onClose, userId, currentVoidId }: Equipm
                     onUninstall={uninstallEquipment}
                   />
                 </TabsContent>
-              </Tabs>
-            </div>
-          </motion.div>
+              </div>
+            </Tabs>
+          </div>
         </motion.div>
       )}
     </AnimatePresence>

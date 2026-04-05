@@ -99,11 +99,13 @@ export function useVoids(userId: string | null) {
   }, [userId]);
 
   const updateVoid = useCallback(async (id: string, updates: Partial<Pick<Void, 'name'>>) => {
-    await supabase.from('voids').update(updates).eq('id', id);
+    const { error } = await supabase.from('voids').update(updates).eq('id', id);
+    if (error) console.error('[useVoids] Failed to update void:', error);
   }, []);
 
   const deleteVoid = useCallback(async (id: string) => {
-    await supabase.from('voids').delete().eq('id', id);
+    const { error } = await supabase.from('voids').delete().eq('id', id);
+    if (error) console.error('[useVoids] Failed to delete void:', error);
   }, []);
 
   const joinVoidByCode = useCallback(async (inviteCode: string) => {

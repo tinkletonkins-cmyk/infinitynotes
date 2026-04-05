@@ -63,8 +63,8 @@ const getUsername = () => {
   return username;
 };
 
-const THROTTLE_MS = 100;
-const CURSOR_THROTTLE_MS = 50;
+const THROTTLE_MS = 50;
+const CURSOR_THROTTLE_MS = 30;
 const CURSOR_TIMEOUT_MS = 5000;
 
 export function useRealtimeTyping(voidId: string | null) {
@@ -73,6 +73,8 @@ export function useRealtimeTyping(voidId: string | null) {
   const [remoteNotes, setRemoteNotes] = useState<Record<string, RemoteNote>>({});
   const [remotePositions, setRemotePositions] = useState<Record<string, RemotePosition>>({});
   const [remoteCursors, setRemoteCursors] = useState<Record<string, RemoteCursor>>({});
+  // Cursor positions stored in a ref — updated without triggering React re-renders
+  const cursorPosRef = useRef<Record<string, { x: number; y: number }>>({});
   const username = useRef(getUsername());
   
   // Throttle state refs
@@ -112,21 +114,35 @@ export function useRealtimeTyping(voidId: string | null) {
       })
       .on('broadcast', { event: 'cursor' }, (payload) => {
         const data = payload.payload as CursorPayload;
-        // Ignore our own broadcasts
         if (data.userId === sessionId.current) return;
-        
-        setRemoteCursors(prev => ({
-          ...prev,
-          [data.userId]: {
-            id: data.userId,
-            x: data.x,
-            y: data.y,
-            username: data.username,
-            lastSeen: Date.now(),
-          },
-        }));
+
+        // Update position ref directly — no React re-render
+        cursorPosRef.current[data.userId] = { x: data.x, y: data.y };
+
+        // Only update state for presence metadata (username, lastSeen)
+        setRemoteCursors(prev => {
+          const existing = prev[data.userId];
+          // Skip state update if just a position change for existing cursor
+          if (existing && existing.username === data.username) {
+            existing.lastSeen = Date.now();
+            return prev;
+          }
+          return {
+            ...prev,
+            [data.userId]: {
+              id: data.userId,
+              x: data.x,
+              y: data.y,
+              username: data.username,
+              lastSeen: Date.now(),
+            },
+          };
+        });
       })
       .subscribe();
+
+    // Assign channel to ref so broadcast methods work
+    channelRef.current = channel;
 
     // Clean up stale cursors every 2 seconds
     const cleanupInterval = setInterval(() => {
@@ -228,8 +244,12 @@ export function useRealtimeTyping(voidId: string | null) {
     });
   }, []);
 
-  // Convert cursors object to array for rendering
-  const cursorsArray = Object.values(remoteCursors);
+  // Merge ref positions into cursor array for rendering
+  const cursorsArray = Object.values(remoteCursors).map(c => ({
+    ...c,
+    x: cursorPosRef.current[c.id]?.x ?? c.x,
+    y: cursorPosRef.current[c.id]?.y ?? c.y,
+  }));
 
   return {
     remoteNotes,
@@ -240,6 +260,7 @@ export function useRealtimeTyping(voidId: string | null) {
     clearRemoteNote,
     clearRemotePosition,
     remoteCursors: cursorsArray,
+    cursorPosRef,
     sessionId: sessionId.current,
   };
 }

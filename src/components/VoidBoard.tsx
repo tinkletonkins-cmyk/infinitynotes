@@ -1,7 +1,6 @@
 import React, { useState, useCallback, useMemo, useEffect } from 'react';
-import { Plus, Loader2, Link2, X, Sparkles, BookOpen, Zap, Pencil, Wrench } from 'lucide-react';
+import { Plus, Link2, X, Wrench, Pencil, Sparkles, BookOpen, Zap } from 'lucide-react';
 import { StickyNote } from './StickyNote';
-import { Switch } from '@/components/ui/switch';
 import { useNotes, Note } from '@/hooks/useNotes';
 import { useConnections } from '@/hooks/useConnections';
 import { useReactions } from '@/hooks/useReactions';
@@ -28,9 +27,11 @@ import { MoodWeather } from './MoodWeather';
 import { VoidSummaryModal } from './VoidSummaryModal';
 import { ConnectionSuggestions } from './ConnectionSuggestions';
 import { BoardThemePicker, BoardTheme } from './BoardThemePicker';
+import { MiniMap } from './MiniMap';
+import { UpdateLog } from './UpdateLog';
 import { BoardNavigator } from './BoardNavigator';
 import { BoardHistorySlider } from './BoardHistorySlider';
-import { LiveCursors, getCursorColor } from './LiveCursors';
+import { LiveCursors, LocalCursor } from './LiveCursors';
 import { VoidPulse } from './VoidPulse';
 import { SyncIndicator } from './SyncIndicator';
 import { EquipmentShop } from './EquipmentShop';
@@ -105,7 +106,7 @@ function VoidBoardContent() {
   const noteIds = useMemo(() => notes.map(n => n.id), [notes]);
   const { addReaction, getReactionCounts, hasUserReacted } = useReactions(noteIds);
   const { getPosition } = useNotePositions();
-  const { remoteNotes, remotePositions, broadcastTyping, broadcastPosition, broadcastCursor, clearRemoteNote, clearRemotePosition, remoteCursors, sessionId } = useRealtimeTyping(currentVoidId);
+  const { remoteNotes, remotePositions, broadcastTyping, broadcastPosition, broadcastCursor, clearRemoteNote, clearRemotePosition, remoteCursors, cursorPosRef, sessionId } = useRealtimeTyping(currentVoidId);
   
   // Void Pulse - activity-based background effects
   const { activityLevel, ripples, pulseNoteCreated, pulseReaction, pulseTyping } = useVoidPulse(currentVoidId);
@@ -127,13 +128,8 @@ function VoidBoardContent() {
     return () => window.removeEventListener('mousemove', handleMouseMove);
   }, [broadcastCursor]);
   
-  // Convert cursors for rendering with colors
-  const cursorsWithColors = useMemo(() => {
-    return remoteCursors.map(cursor => ({
-      ...cursor,
-      color: getCursorColor(cursor.id),
-    }));
-  }, [remoteCursors]);
+  // Convert cursors for rendering with colors — only recomputes on presence changes, not position
+  const cursorsWithColors = useMemo(() => remoteCursors, [remoteCursors]);
   
   // Zoom and pan
   const { scale, x, y, zoomIn, zoomOut, recenter, panTo } = useZoomPan();
@@ -163,6 +159,9 @@ function VoidBoardContent() {
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [showEquipmentShop, setShowEquipmentShop] = useState(false);
   const [echoArchiveOpen, setEchoArchiveOpen] = useState(false);
+  const [showUpdateLog, setShowUpdateLog] = useState(false);
+  // Track mouse movement between down and up to distinguish click from drag
+  const mouseDownPos = React.useRef<{ x: number; y: number } | null>(null);
 
 
   // Show welcome intro for non-signed-in users
@@ -301,6 +300,14 @@ function VoidBoardContent() {
       if (e.key === 'Escape') {
         setConnectingFrom(null);
       }
+      // N to add a new note (skip if typing in an input/textarea)
+      if (e.key === 'n' && !e.metaKey && !e.ctrlKey) {
+        const tag = (e.target as HTMLElement).tagName;
+        if (tag !== 'INPUT' && tag !== 'TEXTAREA') {
+          e.preventDefault();
+          handleAddNote();
+        }
+      }
     };
 
     window.addEventListener('mousemove', handleMouseMove);
@@ -342,15 +349,19 @@ function VoidBoardContent() {
   const handleClearTags = useCallback(() => {
     setSelectedTags([]);
   }, []);
-  const handleAddNote = useCallback(() => {
+  const handleAddNote = useCallback(async () => {
     const viewportWidth = window.innerWidth;
     const viewportHeight = window.innerHeight;
-    const x = Math.random() * (viewportWidth - 300) + 150;
-    const y = Math.random() * (viewportHeight - 300) + 150;
+    const nx = Math.random() * (viewportWidth - 300) + 150;
+    const ny = Math.random() * (viewportHeight - 300) + 150;
     
-    addNote();
-    pulseNoteCreated(x, y);
-  }, [addNote, pulseNoteCreated]);
+    const id = await addNote();
+    if (!id) {
+      toast({ title: 'Failed to create note', description: 'Could not save to database. Try again.', variant: 'destructive' });
+      return;
+    }
+    pulseNoteCreated(nx, ny);
+  }, [addNote, pulseNoteCreated, toast]);
 
   const handleNoteDrop = useCallback((
     droppedId: string,
@@ -563,7 +574,21 @@ function VoidBoardContent() {
   const boardThemeClass = getThemeClass();
 
   return (
-    <div className={`void-board relative ${boardThemeClass}`}>
+    <div
+      className={`void-board relative ${boardThemeClass}`}
+      onMouseDown={(e) => { mouseDownPos.current = { x: e.clientX, y: e.clientY }; }}
+      onClick={(e) => {
+        if (connectingFrom) { cancelConnection(); return; }
+        // Only fire on the raw board background — ignore clicks on any UI element
+        const target = e.target as HTMLElement;
+        if (target.closest('button, input, textarea, [class*="absolute"], header, footer, svg')) return;
+        const down = mouseDownPos.current;
+        if (down && Math.hypot(e.clientX - down.x, e.clientY - down.y) > 5) return;
+        const boardX = (e.clientX - x) / scale;
+        const boardY = (e.clientY - y) / scale;
+        addNote(undefined, { x: boardX - 105, y: boardY - 80 });
+      }}
+    >
       {/* Modals */}
       <WelcomeIntro visible={showWelcome} onDismiss={handleDismissWelcome} />
       <AuthModal 
@@ -624,8 +649,11 @@ function VoidBoardContent() {
         onOpenEchoArchive={() => setEchoArchiveOpen(true)}
       />
 
-      {/* Live Cursors */}
-      <LiveCursors cursors={cursorsWithColors} />
+      {/* Live Cursors — remote users */}
+      <LiveCursors cursors={cursorsWithColors} posRef={cursorPosRef} />
+
+      {/* Local cursor — same style as remote, tracks instantly */}
+      <LocalCursor sessionId={sessionId} />
 
       {/* Note Trails */}
       {notes.map(note => {
@@ -644,8 +672,19 @@ function VoidBoardContent() {
         );
       })}
 
+      <UpdateLog isOpen={showUpdateLog} onClose={() => setShowUpdateLog(false)} />
+
       {/* Ambient Sound Control */}
       <AmbientSound noteCount={notes.length} />
+
+      {/* Updates button — below ambient */}
+      <button
+        onClick={() => setShowUpdateLog(true)}
+        className="fixed top-44 left-4 z-30 flex items-center gap-2 px-3 py-2 border border-foreground bg-background hover:bg-foreground hover:text-background transition-colors"
+        title="View update log"
+      >
+        <span className="text-xs uppercase tracking-widest font-mono">Updates</span>
+      </button>
 
       {/* Title */}
       <header className="fixed top-0 left-0 right-0 z-40 p-4 border-b border-foreground bg-background">
@@ -701,6 +740,33 @@ function VoidBoardContent() {
         </div>
       )}
 
+      {/* Rubber-band connection line — follows cursor while connecting */}
+      {connectingFrom && mousePosition && (() => {
+        const fromNote = notes.find(n => n.id === connectingFrom);
+        const fromPos = getPosition(connectingFrom) || fromNote?.position;
+        if (!fromPos) return null;
+        // Center of the source note (approximate)
+        const sx = fromPos.x * scale + x + NOTE_WIDTH * scale / 2;
+        const sy = fromPos.y * scale + y + NOTE_HEIGHT * scale / 2;
+        return (
+          <svg
+            className="fixed inset-0 pointer-events-none z-40"
+            style={{ width: '100vw', height: '100vh' }}
+          >
+            <line
+              x1={sx} y1={sy}
+              x2={mousePosition.x} y2={mousePosition.y}
+              stroke="hsl(50 100% 60%)"
+              strokeWidth={2}
+              strokeDasharray="6 4"
+              strokeLinecap="round"
+            />
+            <circle cx={sx} cy={sy} r={5} fill="hsl(50 100% 60%)" opacity={0.8} />
+            <circle cx={mousePosition.x} cy={mousePosition.y} r={4} fill="hsl(50 100% 60%)" opacity={0.6} />
+          </svg>
+        );
+      })()}
+
       {/* Equipment Shop */}
       <EquipmentShop
         isOpen={showEquipmentShop}
@@ -711,12 +777,11 @@ function VoidBoardContent() {
 
       {/* warp_jump: now rendered inside EquipmentEffects via WarpJumpButton */}
 
-      {/* Board Theme Picker */}
+      {/* Right-side buttons — original layout */}
       <div className="fixed top-20 right-4 z-50">
         <BoardThemePicker currentTheme={boardTheme} onThemeSelect={setBoardTheme} />
       </div>
 
-      {/* Drawing Void toggle */}
       <button
         onClick={() => setCanvasMode(true)}
         className="fixed top-32 right-4 z-50 flex items-center gap-2 px-3 py-2 border border-foreground bg-background hover:bg-foreground hover:text-background transition-colors"
@@ -726,7 +791,6 @@ function VoidBoardContent() {
         <span className="text-xs uppercase tracking-widest font-mono">Draw</span>
       </button>
 
-      {/* Constellation mode toggle */}
       <button
         onClick={() => setShowConstellation(!showConstellation)}
         className={`fixed top-44 right-4 z-50 flex items-center gap-2 px-3 py-2 border border-foreground transition-colors ${showConstellation ? 'bg-foreground text-background' : 'bg-background hover:bg-foreground hover:text-background'}`}
@@ -736,7 +800,6 @@ function VoidBoardContent() {
         <span className="text-xs uppercase tracking-widest font-mono">Stars</span>
       </button>
 
-      {/* AI: Void Summary button */}
       <button
         onClick={handleGenerateSummary}
         disabled={isLoadingSummary || notes.length === 0}
@@ -747,31 +810,30 @@ function VoidBoardContent() {
         <span className="text-xs uppercase tracking-widest font-mono">Summary</span>
       </button>
 
-      {/* AI: Suggest Connections button */}
       <button
         onClick={handleSuggestConnections}
         disabled={isLoadingConnections || notes.length < 2}
-        className="fixed top-68 right-4 z-50 flex items-center gap-2 px-3 py-2 border border-foreground bg-background hover:bg-foreground hover:text-background transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        className="fixed top-[272px] right-4 z-50 flex items-center gap-2 px-3 py-2 border border-foreground bg-background hover:bg-foreground hover:text-background transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         title="AI suggests note connections"
       >
         <Zap size={14} />
         <span className="text-xs uppercase tracking-widest font-mono">Connect</span>
       </button>
 
-      {/* Equipment Shop button */}
-      <button
-        onClick={() => setShowEquipmentShop(true)}
-        className="fixed top-80 right-4 z-50 flex items-center gap-2 px-3 py-2 border border-foreground bg-background hover:bg-foreground hover:text-background transition-colors"
-        title="Equipment Bay"
-      >
-        <Wrench size={14} />
-        <span className="text-xs uppercase tracking-widest font-mono">Equip</span>
-      </button>
-
 
       {isLoading && (
-        <div className="fixed inset-0 flex items-center justify-center pointer-events-none">
-          <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+        <div className="pt-16 min-h-screen relative z-10">
+          {[...Array(5)].map((_, i) => (
+            <div
+              key={i}
+              className="note-skeleton"
+              style={{
+                left: `${15 + (i % 3) * 28}%`,
+                top: `${20 + Math.floor(i / 3) * 35}%`,
+                transform: `rotate(${(i % 2 === 0 ? 1 : -1) * (i * 0.7)}deg)`,
+              }}
+            />
+          ))}
         </div>
       )}
 
@@ -781,8 +843,18 @@ function VoidBoardContent() {
         style={{
           transform: `translate(${x}px, ${y}px) scale(${scale})`,
         }}
-        onClick={connectingFrom ? cancelConnection : undefined}
-      >
+        onMouseDown={(e) => { mouseDownPos.current = { x: e.clientX, y: e.clientY }; }}
+        onClick={(e) => {
+          if (connectingFrom) { cancelConnection(); return; }
+          // Only fire when clicking the board background, not child elements
+          if (e.target !== e.currentTarget) return;
+          // Ignore if mouse moved more than 4px (was a pan)
+          const down = mouseDownPos.current;
+          if (down && Math.hypot(e.clientX - down.x, e.clientY - down.y) > 4) return;
+          const boardX = (e.clientX - x) / scale;
+          const boardY = (e.clientY - y) / scale;
+          addNote(undefined, { x: boardX - 105, y: boardY - 80 });
+        }}      >
         {notes.map((note) => {
           const isMatch = noteMatchesSearch(note, searchQuery) && 
             (selectedTags.length === 0 || selectedTags.some(tag => note.tags.includes(tag)));
@@ -849,7 +921,15 @@ function VoidBoardContent() {
         <Plus size={32} strokeWidth={2} />
       </button>
 
-      {/* Board Navigator is now rendered inside the footer */}
+      {/* Shop button — standalone, sits above the spawn button */}
+      <button
+        onClick={() => setShowEquipmentShop(true)}
+        className="fixed bottom-28 right-8 z-50 flex items-center gap-2 px-4 py-2 border border-foreground bg-background hover:bg-foreground hover:text-background transition-colors font-mono text-xs uppercase tracking-widest"
+        title="Equipment Shop"
+      >
+        <Wrench size={14} />
+        Shop
+      </button>
 
       {/* Board History Slider */}
       <BoardHistorySlider
@@ -862,22 +942,27 @@ function VoidBoardContent() {
       {/* Sync Indicator */}
       <SyncIndicator isSyncing={isSyncing} lastSyncTime={lastSyncTime} />
 
-      {/* Footer */}
-      <footer className="fixed bottom-0 left-0 p-4 text-xs text-muted-foreground uppercase tracking-wider z-[102]">
-        <div className="mb-2">
-          <BoardNavigator
-            zoom={scale}
-            onRecenter={recenter}
-            onZoomIn={zoomIn}
-            onZoomOut={zoomOut}
-            
-          />
+      {/* Bottom-left: zoom controls + minimap */}
+      <div className="fixed bottom-4 left-4 z-[102] flex flex-col gap-2">
+        {/* Zoom controls */}
+        <BoardNavigator
+          zoom={scale}
+          onRecenter={recenter}
+          onZoomIn={zoomIn}
+          onZoomOut={zoomOut}
+        />
+        {/* Minimap */}
+        <MiniMap
+          notes={notes}
+          panX={x}
+          panY={y}
+          scale={scale}
+          onPanTo={(bx, by) => panTo(bx, by, scale)}
+        />
+        <div className="text-[10px] text-muted-foreground font-mono uppercase tracking-wider">
+          {notes.length} notes
         </div>
-        <div>
-          Notes: {notes.length} | Connections: {connections.length}
-          {user && <span> | {user.email}</span>}
-        </div>
-      </footer>
+      </div>
     </div>
   );
 }
