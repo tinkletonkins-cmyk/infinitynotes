@@ -47,6 +47,8 @@ export function useNotes(voidId: string | null = null) {
   const editingNotesRef = useRef<Set<string>>(new Set());
   // Track notes that were recently dragged — skip position sync for these
   const recentlyDraggedRef = useRef<Map<string, number>>(new Map());
+  // Track notes added optimistically that may not be in DB yet
+  const pendingNoteIdsRef = useRef<Set<string>>(new Set());
   const heartbeatIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // Helper to convert DB row to Note
@@ -177,9 +179,9 @@ export function useNotes(voidId: string | null = null) {
           }
         });
         
-        // Check for deleted notes
+        // Check for deleted notes — but keep optimistically-added notes that aren't in DB yet
         const dbIds = new Set(dbNotes.map(n => n.id));
-        const filteredNotes = updatedNotes.filter(n => dbIds.has(n.id));
+        const filteredNotes = updatedNotes.filter(n => dbIds.has(n.id) || pendingNoteIdsRef.current.has(n.id));
         if (filteredNotes.length !== updatedNotes.length) {
           hasChanges = true;
         }
@@ -277,9 +279,10 @@ export function useNotes(voidId: string | null = null) {
       is_locked: false,
       locked_by: null,
     };
+    pendingNoteIdsRef.current.add(id);
     setNotes(prev => [...prev, newNote]);
 
-    // Persist to database
+    // Persist to database, then remove from pending
     await supabase.from('notes').insert({
       id,
       text: '',
@@ -289,6 +292,8 @@ export function useNotes(voidId: string | null = null) {
       parent_id: parentId || null,
       color: null,
       void_id: voidId,
+    }).then(() => {
+      pendingNoteIdsRef.current.delete(id);
     });
 
     return id;
