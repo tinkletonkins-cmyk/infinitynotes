@@ -95,7 +95,68 @@ function pointToLineDistance(
   return Math.sqrt(dx * dx + dy * dy);
 }
 
-function VoidBoardContent() {
+// Wrapper that stabilizes per-note callbacks so StickyNote (React.memo) doesn't re-render unnecessarily
+const MemoizedNoteWrapper = React.memo(function MemoizedNoteWrapper({
+  note, isConnecting, isConnectionTarget, searchQuery, selectedTags,
+  getReactionCounts, hasUserReacted, handleReact, handleDeleteNote,
+  handleLockNote, handleUnlockNote, handleUpdateNote, handleNoteDrop,
+  handleStartConnection, handleCompleteConnection, handleDragStateChange,
+  remoteNotes, remotePositions, broadcastTyping, broadcastPosition,
+  clearRemoteNote, clearRemotePosition, setNoteEditing, pulseTyping,
+}: any) {
+  const isMatch = noteMatchesSearch(note, searchQuery) &&
+    (selectedTags.length === 0 || selectedTags.some((tag: string) => note.tags.includes(tag)));
+  const dimmed = (searchQuery.trim() !== '' || selectedTags.length > 0) && !isMatch;
+
+  const onReact = useCallback((emoji: string) => handleReact(note.id, emoji), [note.id, handleReact]);
+  const onHasUserReacted = useCallback((emoji: string) => hasUserReacted(note.id, emoji), [note.id, hasUserReacted]);
+  const onTyping = useCallback((text: string, color: string | null) => {
+    broadcastTyping(note.id, text, color);
+    pulseTyping();
+  }, [note.id, broadcastTyping, pulseTyping]);
+  const onTypingComplete = useCallback(() => clearRemoteNote(note.id), [note.id, clearRemoteNote]);
+  const onPositionChange = useCallback((x: number, y: number) => broadcastPosition(note.id, x, y), [note.id, broadcastPosition]);
+  const onPositionComplete = useCallback(() => clearRemotePosition(note.id), [note.id, clearRemotePosition]);
+  const onEditingChange = useCallback((isEditing: boolean) => setNoteEditing(note.id, isEditing), [note.id, setNoteEditing]);
+
+  return (
+    <StickyNote
+      id={note.id}
+      initialText={note.text}
+      initialPosition={note.position}
+      initialRotation={note.rotation}
+      initialColor={note.color}
+      initialShape={note.shape}
+      initialTags={note.tags}
+      isLocked={note.is_locked}
+      lockedBy={note.locked_by}
+      dimmed={dimmed}
+      isConnecting={isConnecting}
+      isConnectionTarget={isConnectionTarget}
+      reactionCounts={getReactionCounts(note.id)}
+      hasUserReacted={onHasUserReacted}
+      onReact={onReact}
+      onDelete={handleDeleteNote}
+      onLock={handleLockNote}
+      onUnlock={handleUnlockNote}
+      onUpdate={handleUpdateNote}
+      onDrop={handleNoteDrop}
+      onStartConnection={handleStartConnection}
+      onCompleteConnection={handleCompleteConnection}
+      onDragStateChange={handleDragStateChange}
+      remoteText={remoteNotes[note.id]?.text}
+      remoteColor={remoteNotes[note.id]?.color}
+      remotePosition={remotePositions[note.id]}
+      onTyping={onTyping}
+      onTypingComplete={onTypingComplete}
+      onPositionChange={onPositionChange}
+      onPositionComplete={onPositionComplete}
+      onEditingChange={onEditingChange}
+    />
+  );
+});
+
+
   const { user, signOut } = useAuth();
   const { voids, createVoid, deleteVoid, joinVoidByCode } = useVoids(user?.id ?? null);
   const { toast } = useToast();
