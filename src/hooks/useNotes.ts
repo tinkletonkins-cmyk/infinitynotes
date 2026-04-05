@@ -287,6 +287,10 @@ export function useNotes(voidId: string | null = null) {
   }, [voidId]);
 
   const updateNote = useCallback(async (id: string, updates: Partial<Pick<Note, 'text' | 'position' | 'color' | 'parent_id' | 'shape' | 'tags' | 'is_locked' | 'locked_by'>>) => {
+    // Mark as recently dragged to prevent heartbeat snap-back
+    if (updates.position) {
+      recentlyDraggedRef.current.set(id, Date.now());
+    }
     // Optimistic update
     setNotes(prev => prev.map(note => 
       note.id === id ? { ...note, ...updates } : note
