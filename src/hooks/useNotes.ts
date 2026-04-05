@@ -150,9 +150,13 @@ export function useNotes(voidId: string | null = null) {
           // Compare key fields
           const hasTextChange = dbNote.text !== localNote.text;
           const hasColorChange = dbNote.color !== localNote.color;
-          const hasPositionChange = 
+          // Skip position sync for recently dragged notes (within 5 seconds)
+          const dragTime = recentlyDraggedRef.current.get(localNote.id);
+          const wasRecentlyDragged = dragTime && (Date.now() - dragTime < 5000);
+          const hasPositionChange = !wasRecentlyDragged && (
             dbNote.position.x !== localNote.position.x || 
-            dbNote.position.y !== localNote.position.y;
+            dbNote.position.y !== localNote.position.y
+          );
           const hasShapeChange = dbNote.shape !== localNote.shape;
           const hasTagsChange = JSON.stringify(dbNote.tags) !== JSON.stringify(localNote.tags);
           const hasLockChange = dbNote.is_locked !== localNote.is_locked || dbNote.locked_by !== localNote.locked_by;
