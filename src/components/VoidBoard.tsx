@@ -827,7 +827,20 @@ function VoidBoardContent() {
           const boardY = (e.clientY - y) / scale;
           addNote(undefined, { x: boardX - 105, y: boardY - 80 });
         }}      >
-        {filteredNotes.map((note) => {
+        {filteredNotes.filter((note) => {
+          // Viewport culling: skip notes that are fully off-screen
+          const BUFFER = 300; // px buffer to avoid pop-in
+          const screenX = note.position.x * scale + x;
+          const screenY = note.position.y * scale + y;
+          const noteW = NOTE_WIDTH * scale;
+          const noteH = NOTE_HEIGHT * scale;
+          return (
+            screenX + noteW > -BUFFER &&
+            screenY + noteH > -BUFFER &&
+            screenX < window.innerWidth + BUFFER &&
+            screenY < window.innerHeight + BUFFER
+          );
+        }).map((note) => {
           const isConnecting = connectingFrom === note.id;
           const isConnectionTarget = connectingFrom !== null && connectingFrom !== note.id;
           
