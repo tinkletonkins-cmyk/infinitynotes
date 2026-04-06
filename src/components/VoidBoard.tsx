@@ -893,17 +893,19 @@ function VoidBoardContent() {
           );
         })}
 
-        {/* Empty state */}
-        {!isLoading && notes.length === 0 && (
-          <div className="fixed inset-0 flex items-center justify-center pointer-events-none">
-            <div className="text-center text-muted-foreground">
-              <p className="text-lg uppercase tracking-widest mb-2">
-                {currentVoid ? 'YOUR VOID IS EMPTY' : 'THE VOID AWAITS'}
-              </p>
-              <p className="text-sm opacity-50">Click + to spawn a note</p>
-            </div>
+      </div>
+
+      {/* Empty state — outside the transformed container so it stays centered */}
+      {!isLoading && notes.length === 0 && (
+        <div className="fixed inset-0 flex items-center justify-center pointer-events-none z-10">
+          <div className="text-center text-muted-foreground">
+            <p className="text-lg uppercase tracking-widest mb-2">
+              {currentVoid ? 'YOUR VOID IS EMPTY' : 'THE VOID AWAITS'}
+            </p>
+            <p className="text-sm opacity-50">Click + to spawn a note</p>
           </div>
-        )}
+        </div>
+      )}
       </div>
 
       {/* Spawn button */}
