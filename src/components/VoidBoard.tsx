@@ -531,11 +531,28 @@ function VoidBoardContent() {
   }, []);
 
   const handleCreateVoid = async (name: string) => {
-    const inviteCode = Math.random().toString(36).slice(2, 8).toUpperCase();
-    // Use the invite code as the void ID — no DB needed, just share the code
-    addVoid({ id: inviteCode, name, createdAt: Date.now(), inviteCode });
-    setCurrentVoidId(inviteCode);
-    toast({ title: 'Void created!', description: `Code: ${inviteCode} — share it to invite others` });
+    if (!user) {
+      toast({ title: 'Sign in required', description: 'You need to sign in to create a void.' });
+      return;
+    }
+
+    // Create the void in the database so it gets a real UUID and invite code
+    const { data, error } = await supabase
+      .from('voids')
+      .insert({ name, owner_id: user.id })
+      .select()
+      .single();
+
+    if (error || !data) {
+      console.error('Failed to create void:', error);
+      toast({ title: 'Error', description: 'Could not create void. Try again.' });
+      return;
+    }
+
+    // Also store locally for fast switching
+    addVoid({ id: data.id, name: data.name, createdAt: Date.now(), inviteCode: data.invite_code ?? '' });
+    setCurrentVoidId(data.id);
+    toast({ title: 'Void created!', description: `Code: ${data.invite_code} — share it to invite others` });
   };
 
   const handleDeleteVoid = async (id: string) => {
