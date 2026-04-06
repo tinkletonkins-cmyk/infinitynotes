@@ -906,7 +906,6 @@ function VoidBoardContent() {
           </div>
         </div>
       )}
-      </div>
 
       {/* Spawn button */}
       <button
