@@ -99,45 +99,28 @@ export function ConstellationMode({ active }: ConstellationModeProps) {
   const [stars, setStars] = useState<StarPoint[]>([]);
 
   useEffect(() => {
-    if (active) {
-      setStars(generateStars(60));
-    } else {
-      setStars([]);
-    }
+    if (active) setStars(generateStars(40));
+    else setStars([]);
   }, [active]);
 
-  if (!active) return null;
+  if (!active || stars.length === 0) return null;
 
   return (
     <div className="fixed inset-0 z-[5] pointer-events-none overflow-hidden">
-      <AnimatePresence>
-        {stars.map(star => (
-          <motion.div
-            key={star.id}
-            initial={{ opacity: 0, scale: 0.5 }}
-            animate={{ 
-              opacity: [0.2, 1, 0.2],
-              scale: [0.7, 1, 0.7],
-            }}
-            exit={{ opacity: 0, scale: 0 }}
-            transition={{
-              duration: star.twinkleDuration,
-              delay: star.twinkleDelay,
-              repeat: Infinity,
-              repeatType: 'loop',
-              ease: 'easeInOut',
-            }}
-            className="absolute"
-            style={{
-              left: `${star.x}%`,
-              top: `${star.y}%`,
-              transform: 'translate(-50%, -50%)',
-            }}
-          >
-            <Star size={star.size} />
-          </motion.div>
-        ))}
-      </AnimatePresence>
+      {stars.map(star => (
+        <div
+          key={star.id}
+          className="absolute"
+          style={{
+            left: `${star.x}%`,
+            top: `${star.y}%`,
+            transform: 'translate(-50%, -50%)',
+            animation: `twinkle ${star.twinkleDuration}s ${star.twinkleDelay}s ease-in-out infinite`,
+          }}
+        >
+          <Star size={star.size} />
+        </div>
+      ))}
     </div>
   );
 }

@@ -369,6 +369,11 @@
     50% { opacity: 0; }
   }
 
+  @keyframes twinkle {
+    0%, 100% { opacity: 0.2; transform: translate(-50%, -50%) scale(0.7); }
+    50% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  }
+
   /* Void Navigator cosmic background */
   .void-navigator-bg {
     background:

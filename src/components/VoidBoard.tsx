@@ -5,7 +5,8 @@ import { useNotes, Note } from '@/hooks/useNotes';
 import { useConnections } from '@/hooks/useConnections';
 import { useReactions } from '@/hooks/useReactions';
 import { useAuth } from '@/hooks/useAuth';
-import { useVoids } from '@/hooks/useVoids';
+import { supabase } from '@/integrations/supabase/client';
+import { useLocalVoids } from '@/hooks/useLocalVoids';
 import { useVoidAI } from '@/hooks/useVoidAI';
 import { useRealtimeTyping } from '@/hooks/useRealtimeTyping';
 import { useZoomPan } from '@/hooks/useZoomPan';
@@ -16,12 +17,8 @@ import { DrawingCanvas } from './DrawingCanvas';
 import { NotePositionsProvider, useNotePositions } from '@/contexts/NotePositionsContext';
 import { WelcomeIntro } from './WelcomeIntro';
 import { VoidSwitcher } from './VoidSwitcher';
-import { AuthModal } from './AuthModal';
-import { CreateVoidModal } from './CreateVoidModal';
-import { JoinVoidModal } from './JoinVoidModal';
 import { useToast } from '@/hooks/use-toast';
 import { AmbientSound } from './AmbientSound';
-import { NoteTrail } from './NoteTrail';
 import { ConstellationMode } from './ConstellationMode';
 import { MoodWeather } from './MoodWeather';
 import { VoidSummaryModal } from './VoidSummaryModal';
@@ -158,7 +155,7 @@ const MemoizedNoteWrapper = React.memo(function MemoizedNoteWrapper({
 
 function VoidBoardContent() {
   const { user, signOut } = useAuth();
-  const { voids, createVoid, deleteVoid, joinVoidByCode } = useVoids(user?.id ?? null);
+  const { voids, createVoid, deleteVoid, addVoid } = useLocalVoids();
   const { toast } = useToast();
   
   const [currentVoidId, setCurrentVoidId] = useState<string | null>(null);
@@ -298,58 +295,6 @@ function VoidBoardContent() {
   
   // Modal states
   const [showAuthModal, setShowAuthModal] = useState(false);
-  const [showCreateVoidModal, setShowCreateVoidModal] = useState(false);
-  const [showJoinVoidModal, setShowJoinVoidModal] = useState(false);
-
-  // Handle join code from URL
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const joinCode = params.get('join');
-    
-    if (joinCode) {
-      // Remove from URL
-      window.history.replaceState({}, '', window.location.pathname);
-      
-      if (user) {
-        // Try to join immediately
-        handleJoinVoid(joinCode);
-      } else {
-        // Store for after login
-        localStorage.setItem('pending-join-code', joinCode);
-        setShowAuthModal(true);
-      }
-    }
-  }, [user]);
-
-  // Check for pending join code after login
-  useEffect(() => {
-    if (user) {
-      const pendingCode = localStorage.getItem('pending-join-code');
-      if (pendingCode) {
-        localStorage.removeItem('pending-join-code');
-        handleJoinVoid(pendingCode);
-      }
-    }
-  }, [user]);
-
-  const handleJoinVoid = async (code: string) => {
-    // Extract code from URL if full URL was pasted
-    let inviteCode = code;
-    if (code.includes('?join=')) {
-      inviteCode = code.split('?join=')[1];
-    }
-    
-    const result = await joinVoidByCode(inviteCode);
-    if (result.success && result.void) {
-      setCurrentVoidId(result.void.id);
-      toast({
-        title: 'Joined void!',
-        description: `You're now in "${result.void.name}"`,
-      });
-    }
-    return result;
-  };
-
   // Track mouse position when connecting
   useEffect(() => {
     if (!connectingFrom) {
@@ -586,16 +531,11 @@ function VoidBoardContent() {
   }, []);
 
   const handleCreateVoid = async (name: string) => {
-    const newVoid = await createVoid(name);
-    if (newVoid) {
-      setCurrentVoidId(newVoid.id);
-      toast({
-        title: 'Void created!',
-        description: `Share code ${newVoid.invite_code} to bring others in.`,
-      });
-      return newVoid;
-    }
-    return null;
+    const inviteCode = Math.random().toString(36).slice(2, 8).toUpperCase();
+    // Use the invite code as the void ID — no DB needed, just share the code
+    addVoid({ id: inviteCode, name, createdAt: Date.now(), inviteCode });
+    setCurrentVoidId(inviteCode);
+    toast({ title: 'Void created!', description: `Code: ${inviteCode} — share it to invite others` });
   };
 
   const handleDeleteVoid = async (id: string) => {
@@ -656,21 +596,6 @@ function VoidBoardContent() {
     >
       {/* Modals */}
       <WelcomeIntro visible={showWelcome} onDismiss={handleDismissWelcome} />
-      <AuthModal 
-        isOpen={showAuthModal} 
-        onClose={() => setShowAuthModal(false)}
-        onSuccess={() => {}}
-      />
-      <CreateVoidModal
-        isOpen={showCreateVoidModal}
-        onClose={() => setShowCreateVoidModal(false)}
-        onSubmit={handleCreateVoid}
-      />
-      <JoinVoidModal
-        isOpen={showJoinVoidModal}
-        onClose={() => setShowJoinVoidModal(false)}
-        onSubmit={handleJoinVoid}
-      />
 
       {/* AI Modals */}
       <VoidSummaryModal
@@ -720,22 +645,7 @@ function VoidBoardContent() {
       {/* Local cursor — same style as remote, tracks instantly */}
       <LocalCursor sessionId={sessionId} />
 
-      {/* Note Trails */}
-      {notes.map(note => {
-        const dragState = dragStates[note.id];
-        if (!dragState) return null;
-        return (
-          <NoteTrail
-            key={`trail-${note.id}`}
-            noteId={note.id}
-            isDragging={dragState.isDragging}
-            x={dragState.x}
-            y={dragState.y}
-            rotation={note.rotation}
-            color={note.color}
-          />
-        );
-      })}
+      {/* Note Trails removed for performance */}
 
       <UpdateLog isOpen={showUpdateLog} onClose={() => setShowUpdateLog(false)} />
 
@@ -757,18 +667,15 @@ function VoidBoardContent() {
           <VoidSwitcher
             currentVoidId={currentVoidId}
             voids={voids}
-            user={user}
             onSwitchVoid={setCurrentVoidId}
-            onCreateVoid={() => setShowCreateVoidModal(true)}
+            onCreateVoid={handleCreateVoid}
             onDeleteVoid={handleDeleteVoid}
-            onJoinVoid={() => setShowJoinVoidModal(true)}
-            onSignIn={() => setShowAuthModal(true)}
-            onSignOut={signOut}
+            onJoinVoid={(v) => { addVoid(v); }}
           />
           <h1 className="text-xl font-bold uppercase tracking-[0.5em] text-center flex-1">
-            {currentVoid ? currentVoid.name.toUpperCase() : 'THE MULTIPLAYER VOID'}
+            {currentVoid ? currentVoid.name.toUpperCase() : 'THE VOID'}
           </h1>
-          <div className="w-[180px]" /> {/* Spacer for balance */}
+          <div className="w-[180px]" />
         </div>
       </header>
 

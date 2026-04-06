@@ -57,53 +57,21 @@ function getCollectiveMood(notes: Note[]): { emotion: EmotionType; intensity: nu
 }
 
 export function MoodWeather({ notes }: MoodWeatherProps) {
-  const { emotion, intensity } = useMemo(() => getCollectiveMood(notes), [notes]);
+  // Only recompute when note texts change, not on every render
+  const noteTexts = notes.map(n => n.text).join('|');
+  const { emotion, intensity } = useMemo(() => getCollectiveMood(notes), [noteTexts]);
   const gradient = emotionGradients[emotion];
 
-  // No weather effect if no notes or very low intensity
-  if (notes.length === 0 || intensity < 0.1) {
-    return null;
-  }
+  if (notes.length === 0 || intensity < 0.1) return null;
 
   return (
-    <motion.div
+    <div
       className="fixed inset-0 pointer-events-none z-[1]"
-      initial={{ opacity: 0 }}
-      animate={{ opacity: intensity }}
-      transition={{ duration: 2 }}
-    >
-      {/* Radial gradient from center */}
-      <div
-        className="absolute inset-0"
-        style={{
-          background: `radial-gradient(ellipse at 50% 50%, ${gradient.from} 0%, ${gradient.to} 50%, transparent 80%)`,
-        }}
-      />
-      
-      {/* Edge vignette glow */}
-      <div
-        className="absolute inset-0"
-        style={{
-          background: `radial-gradient(ellipse at 50% 100%, ${gradient.glow} 0%, transparent 50%)`,
-          opacity: 0.5,
-        }}
-      />
-      
-      {/* Subtle animated pulse */}
-      <motion.div
-        className="absolute inset-0"
-        animate={{
-          opacity: [0.3, 0.6, 0.3],
-        }}
-        transition={{
-          duration: 8,
-          repeat: Infinity,
-          ease: 'easeInOut',
-        }}
-        style={{
-          background: `radial-gradient(circle at 50% 30%, ${gradient.glow} 0%, transparent 40%)`,
-        }}
-      />
-    </motion.div>
+      style={{
+        background: `radial-gradient(ellipse at 50% 50%, ${gradient.from} 0%, ${gradient.to} 50%, transparent 80%)`,
+        opacity: intensity,
+        transition: 'opacity 2s ease',
+      }}
+    />
   );
 }
