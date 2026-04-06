@@ -86,6 +86,9 @@ export function useNotes(voidId: string | null = null) {
 
   // Fetch initial notes for current void - BEFORE realtime starts
   useEffect(() => {
+    // Clear notes immediately when switching voids to prevent stale data
+    setNotes([]);
+    
     const fetchNotes = async () => {
       setIsLoading(true);
       
