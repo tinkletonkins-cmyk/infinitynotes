@@ -39,16 +39,34 @@ export function VoidSwitcher({ currentVoidId, voids, onSwitchVoid, onCreateVoid,
   const handleJoin = async () => {
     const code = joinCode.trim().toUpperCase();
     if (!code) return;
-    // Use the code directly as the shared void ID — no DB lookup needed
+    
+    // Look up the void by invite code in the database
+    const { data, error } = await supabase
+      .from('voids')
+      .select('id, name, invite_code')
+      .eq('invite_code', code)
+      .single();
+    
+    if (error || !data) {
+      toast({ title: 'Void not found', description: 'No void exists with that invite code.' });
+      return;
+    }
+    
+    // Add as a member if authenticated
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      await supabase.from('void_members').insert({ void_id: data.id, user_id: user.id }).select();
+    }
+    
     const localVoid: LocalVoid = {
-      id: code,
-      name: `Void ${code}`,
+      id: data.id,
+      name: data.name,
       createdAt: Date.now(),
-      inviteCode: code,
+      inviteCode: data.invite_code ?? code,
     };
     onJoinVoid(localVoid);
-    onSwitchVoid(code);
-    toast({ title: `Joined void ${code}` });
+    onSwitchVoid(data.id);
+    toast({ title: `Joined ${data.name}` });
     setJoinCode('');
     setMode('list');
     setIsOpen(false);
