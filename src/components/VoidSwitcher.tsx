@@ -113,7 +113,7 @@ export function VoidSwitcher({ currentVoidId, voids, onSwitchVoid, onCreateVoid,
               {voids.length > 0 && (
                 <>
                   <div className="border-t border-foreground/20" />
-                  <div className="px-4 py-1.5 text-[10px] font-mono uppercase tracking-widest text-muted-foreground">Private</div>
+                  <div className="px-4 py-1.5 text-[10px] font-mono uppercase tracking-widest text-muted-foreground">Multiplayer</div>
                   {voids.map(v => (
                     <div key={v.id} className={`flex items-center gap-1 px-4 py-2 hover:bg-muted transition-colors ${currentVoidId === v.id ? 'bg-muted' : ''}`}>
                       <button onClick={() => { onSwitchVoid(v.id); close(); }} className="flex-1 text-left text-sm font-mono uppercase tracking-wider truncate">
