@@ -160,7 +160,7 @@ export function VoidSwitcher({ currentVoidId, voids, onSwitchVoid, onCreateVoid,
                 <>
                   <button onClick={() => setMode('create')} className="w-full flex items-center gap-3 px-4 py-3 hover:bg-muted transition-colors text-left text-muted-foreground hover:text-foreground">
                     <Plus size={15} />
-                    <span className="text-sm font-mono uppercase tracking-wider">New Private Void</span>
+                    <span className="text-sm font-mono uppercase tracking-wider">New Multiplayer Void</span>
                   </button>
                   <button onClick={() => setMode('join')} className="w-full flex items-center gap-3 px-4 py-3 hover:bg-muted transition-colors text-left text-muted-foreground hover:text-foreground">
                     <Users size={15} />
