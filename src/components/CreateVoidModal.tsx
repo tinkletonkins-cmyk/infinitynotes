@@ -27,7 +27,7 @@ export function CreateVoidModal({ isOpen, onClose, onSubmit }: CreateVoidModalPr
     if (result) {
       setCreatedVoid(result);
     } else {
-      setError('Failed to create void. Make sure you are signed in.');
+      setError('Failed to create void. Sign in to create multiplayer voids.');
     }
     
     setIsSubmitting(false);
