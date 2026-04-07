@@ -78,7 +78,7 @@ export function CreateVoidModal({ isOpen, onClose, onSubmit }: CreateVoidModalPr
             {createdVoid ? (
               <div className="space-y-4">
                 <p className="text-sm text-muted-foreground">
-                  Your private void is ready. Share this code with others to invite them:
+                  Your multiplayer void is ready. Share this code with others to invite them:
                 </p>
                 
                 <div className="flex items-center gap-2">
