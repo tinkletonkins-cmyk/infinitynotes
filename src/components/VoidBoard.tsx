@@ -531,29 +531,27 @@ function VoidBoardContent() {
   }, []);
 
   const handleCreateVoid = async (name: string) => {
-    if (user) {
-      // Authenticated: create in DB for multiplayer support
-      const { data, error } = await supabase
-        .from('voids')
-        .insert({ name, owner_id: user.id })
-        .select()
-        .single();
-
-      if (error || !data) {
-        console.error('Failed to create void:', error);
-        toast({ title: 'Error', description: 'Could not create void. Try again.' });
-        return;
-      }
-
-      addVoid({ id: data.id, name: data.name, createdAt: Date.now(), inviteCode: data.invite_code ?? '' });
-      setCurrentVoidId(data.id);
-      toast({ title: 'Void created!', description: `Code: ${data.invite_code} — share it to invite others` });
-    } else {
-      // Guest: local-only void with a proper UUID
-      const newVoid = createVoid(name);
-      setCurrentVoidId(newVoid.id);
-      toast({ title: 'Void created!', description: 'Sign in to get an invite code and enable multiplayer.' });
+    if (!user) {
+      toast({ title: 'Sign in required', description: 'You need to sign in to create a multiplayer void.', variant: 'destructive' });
+      return;
     }
+    
+    // Authenticated: create in DB for multiplayer support
+    const { data, error } = await supabase
+      .from('voids')
+      .insert({ name, owner_id: user.id })
+      .select()
+      .single();
+
+    if (error || !data) {
+      console.error('Failed to create void:', error);
+      toast({ title: 'Error', description: 'Could not create void. Try again.' });
+      return;
+    }
+
+    addVoid({ id: data.id, name: data.name, createdAt: Date.now(), inviteCode: data.invite_code ?? '' });
+    setCurrentVoidId(data.id);
+    toast({ title: 'Void created!', description: `Code: ${data.invite_code} — share it to invite others` });
   };
 
   const handleDeleteVoid = async (id: string) => {

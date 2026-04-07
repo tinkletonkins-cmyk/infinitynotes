@@ -27,7 +27,7 @@ export function CreateVoidModal({ isOpen, onClose, onSubmit }: CreateVoidModalPr
     if (result) {
       setCreatedVoid(result);
     } else {
-      setError('Failed to create void. Make sure you are signed in.');
+      setError('Failed to create void. Sign in to create multiplayer voids.');
     }
     
     setIsSubmitting(false);
@@ -68,7 +68,7 @@ export function CreateVoidModal({ isOpen, onClose, onSubmit }: CreateVoidModalPr
           >
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-xl font-bold uppercase tracking-widest">
-                {createdVoid ? 'Void Created!' : 'Create Your Void'}
+                {createdVoid ? 'Void Created!' : 'Create Multiplayer Void'}
               </h2>
               <button onClick={handleClose} className="p-1 hover:bg-muted">
                 <X size={20} />
@@ -78,7 +78,7 @@ export function CreateVoidModal({ isOpen, onClose, onSubmit }: CreateVoidModalPr
             {createdVoid ? (
               <div className="space-y-4">
                 <p className="text-sm text-muted-foreground">
-                  Your private void is ready. Share this code with others to invite them:
+                  Your multiplayer void is ready. Share this code with others to invite them:
                 </p>
                 
                 <div className="flex items-center gap-2">

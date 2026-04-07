@@ -78,7 +78,7 @@ function SmoothCursor({
 
 export function LiveCursors({ cursors, posRef }: LiveCursorsProps) {
   return (
-    <div className="fixed inset-0 pointer-events-none z-[60]">
+    <div className="fixed inset-0 pointer-events-none z-[9997]">
       <AnimatePresence>
         {cursors.map(cursor => (
           <SmoothCursor key={cursor.id} cursor={cursor} posRef={posRef} />
@@ -107,7 +107,7 @@ export function LocalCursor({ sessionId }: { sessionId: string }) {
 
   return (
     <motion.div
-      className="fixed top-0 left-0 pointer-events-none z-[61]"
+      className="fixed top-0 left-0 pointer-events-none z-[9998]"
       style={{ x, y }}
     >
       <MousePointer2
