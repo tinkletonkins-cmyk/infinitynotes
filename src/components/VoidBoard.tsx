@@ -533,7 +533,6 @@ function VoidBoardContent() {
   const handleCreateVoid = async (name: string) => {
     if (!user) {
       toast({ title: 'Sign in required', description: 'You need to sign in to create a multiplayer void.', variant: 'destructive' });
-      setShowAuthModal(true);
       return;
     }
     
