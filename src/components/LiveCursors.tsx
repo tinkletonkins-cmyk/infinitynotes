@@ -107,7 +107,7 @@ export function LocalCursor({ sessionId }: { sessionId: string }) {
 
   return (
     <motion.div
-      className="fixed top-0 left-0 pointer-events-none z-[61]"
+      className="fixed top-0 left-0 pointer-events-none z-[9998]"
       style={{ x, y }}
     >
       <MousePointer2
