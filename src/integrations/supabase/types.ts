@@ -432,7 +432,23 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      create_guest_void: {
+        Args: { _name: string }
+        Returns: {
+          id: string
+          invite_code: string
+          name: string
+        }[]
+      }
       ensure_player_energy: { Args: never; Returns: number }
+      lookup_multiplayer_void: {
+        Args: { _invite_code: string }
+        Returns: {
+          id: string
+          invite_code: string
+          name: string
+        }[]
+      }
       user_has_void_access: {
         Args: { check_void_id: string }
         Returns: boolean
