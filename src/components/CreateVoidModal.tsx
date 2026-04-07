@@ -68,7 +68,7 @@ export function CreateVoidModal({ isOpen, onClose, onSubmit }: CreateVoidModalPr
           >
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-xl font-bold uppercase tracking-widest">
-                {createdVoid ? 'Void Created!' : 'Create Your Void'}
+                {createdVoid ? 'Void Created!' : 'Create Multiplayer Void'}
               </h2>
               <button onClick={handleClose} className="p-1 hover:bg-muted">
                 <X size={20} />
