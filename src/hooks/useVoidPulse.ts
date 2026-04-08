@@ -20,7 +20,7 @@ interface Ripple {
 
 const ACTIVITY_DECAY_MS = 3000; // How fast activity level decays
 const RIPPLE_LIFETIME_MS = 2000;
-const ACTIVITY_SAMPLE_INTERVAL = 100;
+const ACTIVITY_SAMPLE_INTERVAL = 500;
 
 // Get session ID
 function getSessionId(): string {
