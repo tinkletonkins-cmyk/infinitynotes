@@ -20,7 +20,7 @@ interface Ripple {
 
 const ACTIVITY_DECAY_MS = 3000; // How fast activity level decays
 const RIPPLE_LIFETIME_MS = 2000;
-const ACTIVITY_SAMPLE_INTERVAL = 100;
+const ACTIVITY_SAMPLE_INTERVAL = 500;
 
 // Get session ID
 function getSessionId(): string {
@@ -97,9 +97,9 @@ export function useVoidPulse(voidId: string | null) {
       const newLevel = Math.min(1, eventCount / 10);
       
       setActivityLevel(prev => {
-        // Smooth transition
         const diff = newLevel - prev;
-        return prev + diff * 0.1;
+        if (Math.abs(diff) < 0.01) return prev; // skip tiny updates
+        return prev + diff * 0.3;
       });
       
       // Clean up old ripples
