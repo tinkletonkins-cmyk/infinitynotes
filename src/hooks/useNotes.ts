@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { NoteShape } from '@/components/NoteShapePicker';
 
 // Sync interval — 5s is enough since we have realtime subscriptions
-const HEARTBEAT_INTERVAL_MS = 5000;
+const HEARTBEAT_INTERVAL_MS = 10000;
 
 export interface Note {
   id: string;
