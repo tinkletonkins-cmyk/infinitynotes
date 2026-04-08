@@ -97,9 +97,9 @@ export function useVoidPulse(voidId: string | null) {
       const newLevel = Math.min(1, eventCount / 10);
       
       setActivityLevel(prev => {
-        // Smooth transition
         const diff = newLevel - prev;
-        return prev + diff * 0.1;
+        if (Math.abs(diff) < 0.01) return prev; // skip tiny updates
+        return prev + diff * 0.3;
       });
       
       // Clean up old ripples
