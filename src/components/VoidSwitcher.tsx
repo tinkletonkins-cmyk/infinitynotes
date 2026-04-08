@@ -53,7 +53,7 @@ export function VoidSwitcher({ currentVoidId, voids, onSwitchVoid, onCreateVoid,
     // Add as a member if authenticated (optional, not required)
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
-      await supabase.from('void_members').insert({ void_id: found.id, user_id: user.id }).select().catch(() => {});
+      await supabase.from('void_members').insert({ void_id: found.id, user_id: user.id }).select();
     }
     
     const localVoid: LocalVoid = {
