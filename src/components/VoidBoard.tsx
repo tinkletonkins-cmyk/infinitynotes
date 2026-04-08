@@ -531,27 +531,19 @@ function VoidBoardContent() {
   }, []);
 
   const handleCreateVoid = async (name: string) => {
-    if (!user) {
-      toast({ title: 'Sign in required', description: 'You need to sign in to create a multiplayer void.', variant: 'destructive' });
-      return;
-    }
-    
-    // Authenticated: create in DB for multiplayer support
-    const { data, error } = await supabase
-      .from('voids')
-      .insert({ name, owner_id: user.id })
-      .select()
-      .single();
+    // Use RPC so both guests and signed-in users can create voids
+    const { data, error } = await supabase.rpc('create_guest_void', { _name: name });
 
-    if (error || !data) {
+    if (error || !data || data.length === 0) {
       console.error('Failed to create void:', error);
       toast({ title: 'Error', description: 'Could not create void. Try again.' });
       return;
     }
 
-    addVoid({ id: data.id, name: data.name, createdAt: Date.now(), inviteCode: data.invite_code ?? '' });
-    setCurrentVoidId(data.id);
-    toast({ title: 'Void created!', description: `Code: ${data.invite_code} — share it to invite others` });
+    const created = data[0];
+    addVoid({ id: created.id, name: created.name, createdAt: Date.now(), inviteCode: created.invite_code ?? '' });
+    setCurrentVoidId(created.id);
+    toast({ title: 'Void created!', description: `Code: ${created.invite_code} — share it to invite others` });
   };
 
   const handleDeleteVoid = async (id: string) => {

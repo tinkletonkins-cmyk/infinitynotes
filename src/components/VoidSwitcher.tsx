@@ -40,33 +40,31 @@ export function VoidSwitcher({ currentVoidId, voids, onSwitchVoid, onCreateVoid,
     const code = joinCode.trim().toUpperCase();
     if (!code) return;
     
-    // Look up the void by invite code in the database
-    const { data, error } = await supabase
-      .from('voids')
-      .select('id, name, invite_code')
-      .eq('invite_code', code)
-      .single();
+    // Use RPC to look up void — works for both guests and signed-in users
+    const { data, error } = await supabase.rpc('lookup_multiplayer_void', { _invite_code: code });
     
-    if (error || !data) {
+    if (error || !data || data.length === 0) {
       toast({ title: 'Void not found', description: 'No void exists with that invite code.' });
       return;
     }
+
+    const found = data[0];
     
-    // Add as a member if authenticated
+    // Add as a member if authenticated (optional, not required)
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
-      await supabase.from('void_members').insert({ void_id: data.id, user_id: user.id }).select();
+      await supabase.from('void_members').insert({ void_id: found.id, user_id: user.id }).select();
     }
     
     const localVoid: LocalVoid = {
-      id: data.id,
-      name: data.name,
+      id: found.id,
+      name: found.name,
       createdAt: Date.now(),
-      inviteCode: data.invite_code ?? code,
+      inviteCode: found.invite_code ?? code,
     };
     onJoinVoid(localVoid);
-    onSwitchVoid(data.id);
-    toast({ title: `Joined ${data.name}` });
+    onSwitchVoid(found.id);
+    toast({ title: `Joined ${found.name}` });
     setJoinCode('');
     setMode('list');
     setIsOpen(false);
