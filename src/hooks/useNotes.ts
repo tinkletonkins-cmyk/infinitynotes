@@ -368,6 +368,9 @@ export function useNotes(voidId: string | null = null) {
       note.id === id ? { ...note, ...updates } : note
     ));
 
+    // Don't persist drafts to DB — they aren't there yet
+    if (draftNoteIdsRef.current.has(id)) return;
+
     // Persist to database
     const dbUpdates: any = {};
     if (updates.text !== undefined) dbUpdates.text = updates.text;
@@ -389,6 +392,11 @@ export function useNotes(voidId: string | null = null) {
   }, []);
 
   const deleteNote = useCallback(async (id: string) => {
+    // If it's a draft, just remove locally
+    if (draftNoteIdsRef.current.has(id)) {
+      discardDraft(id);
+      return;
+    }
     // Optimistic update
     setNotes(prev => prev.filter(note => note.id !== id));
     
@@ -396,7 +404,7 @@ export function useNotes(voidId: string | null = null) {
     if (error) {
       console.error('[useNotes] Failed to delete note:', error);
     }
-  }, []);
+  }, [discardDraft]);
 
-  return { notes, isLoading, isSyncing, lastSyncTime, addNote, updateNote, deleteNote, setNoteEditing };
+  return { notes, isLoading, isSyncing, lastSyncTime, addNote, updateNote, deleteNote, setNoteEditing, publishNote, discardDraft, draftIds };
 }
