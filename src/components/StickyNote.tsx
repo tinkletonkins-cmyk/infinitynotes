@@ -96,6 +96,9 @@ export const StickyNote = React.memo(function StickyNote({
   onPositionChange,
   onPositionComplete,
   onEditingChange,
+  isDraft = false,
+  onPublish,
+  onDiscard,
 }: StickyNoteProps) {
   const [text, setText] = useState(initialText);
   const [color, setColor] = useState<string | null>(initialColor);
