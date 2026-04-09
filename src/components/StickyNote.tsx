@@ -117,6 +117,8 @@ export const StickyNote = React.memo(function StickyNote({
   const draftSaveTimerRef = useRef<NodeJS.Timeout | null>(null);
   const lastDraftSaveRef = useRef<number>(0);
   const pendingTextRef = useRef<string>(initialText);
+  const isDraftRef = useRef(isDraft);
+  isDraftRef.current = isDraft;
   // Track whether user has manually positioned this note — prevent prop sync from snapping it back
   const hasUserPositionedRef = useRef(false);
   // Track mounted state to prevent saves after unmount
