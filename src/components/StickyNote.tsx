@@ -229,7 +229,7 @@ export const StickyNote = React.memo(function StickyNote({
       if (draftSaveTimerRef.current) {
         clearTimeout(draftSaveTimerRef.current);
       }
-      if (pendingTextRef.current !== lastSavedText) {
+      if (pendingTextRef.current !== lastSavedText && !isDraftRef.current) {
         supabase
           .from('notes')
           .update({ text: pendingTextRef.current })
