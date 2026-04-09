@@ -450,7 +450,7 @@ export const StickyNote = React.memo(function StickyNote({
       >
       <div
         style={backgroundStyle}
-        className={`relative w-full h-full ${!displayColor ? emotionClass : ''} border border-foreground ${shape === 'circle' ? 'aspect-square flex flex-col' : ''} note-glow note-glow-${!displayColor ? emotion : 'custom'}`}
+        className={`relative w-full h-full ${!displayColor ? emotionClass : ''} ${isDraft ? 'border-2 border-dashed border-foreground/50' : 'border border-foreground'} ${shape === 'circle' ? 'aspect-square flex flex-col' : ''} note-glow note-glow-${!displayColor ? emotion : 'custom'}`}
       >
         {/* Header with drag handle */}
         <div className="flex items-center justify-between p-2 border-b border-current">
