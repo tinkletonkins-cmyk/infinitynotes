@@ -181,8 +181,8 @@ export const StickyNote = React.memo(function StickyNote({
   // Debounced draft save - saves to database every 2 seconds while typing
   const saveDraftToDatabase = useCallback(async (draftText: string) => {
     if (!isMountedRef.current) return;
+    if (isDraft) return; // Don't save drafts to DB
     const now = Date.now();
-    // Prevent saving too frequently
     if (now - lastDraftSaveRef.current < DRAFT_SAVE_INTERVAL_MS) return;
     
     lastDraftSaveRef.current = now;
@@ -193,7 +193,7 @@ export const StickyNote = React.memo(function StickyNote({
       .eq('id', id);
       
     console.log(`[StickyNote] Draft saved for note ${id}`);
-  }, [id]);
+  }, [id, isDraft]);
 
   // Set up debounced save timer when text changes
   useEffect(() => {
