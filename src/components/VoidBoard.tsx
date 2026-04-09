@@ -359,19 +359,16 @@ function VoidBoardContent() {
   const handleClearTags = useCallback(() => {
     setSelectedTags([]);
   }, []);
-  const handleAddNote = useCallback(async () => {
+  const handleAddNote = useCallback(() => {
     const viewportWidth = window.innerWidth;
     const viewportHeight = window.innerHeight;
     const nx = Math.random() * (viewportWidth - 300) + 150;
     const ny = Math.random() * (viewportHeight - 300) + 150;
     
-    const id = await addNote();
-    if (!id) {
-      toast({ title: 'Failed to create note', description: 'Could not save to database. Try again.', variant: 'destructive' });
-      return;
-    }
+    const id = addNote();
+    if (!id) return;
     pulseNoteCreated(nx, ny);
-  }, [addNote, pulseNoteCreated, toast]);
+  }, [addNote, pulseNoteCreated]);
 
   const handleNoteDrop = useCallback((
     droppedId: string,
