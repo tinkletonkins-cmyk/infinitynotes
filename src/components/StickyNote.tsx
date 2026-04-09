@@ -52,6 +52,9 @@ interface StickyNoteProps {
   onPositionChange?: (x: number, y: number) => void;
   onPositionComplete?: () => void;
   onEditingChange?: (isEditing: boolean) => void;
+  isDraft?: boolean;
+  onPublish?: (id: string) => Promise<boolean>;
+  onDiscard?: (id: string) => void;
 }
 
 // Direct tracking — no spring delay

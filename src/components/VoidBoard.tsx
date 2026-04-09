@@ -880,6 +880,9 @@ function VoidBoardContent() {
               clearRemotePosition={clearRemotePosition}
               setNoteEditing={setNoteEditing}
               pulseTyping={pulseTyping}
+              isDraft={draftIds.has(note.id)}
+              onPublish={publishNote}
+              onDiscard={discardDraft}
             />
           );
         })}
