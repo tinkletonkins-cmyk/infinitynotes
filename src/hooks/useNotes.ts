@@ -279,7 +279,11 @@ export function useNotes(voidId: string | null = null) {
     };
   }, [voidId]);
 
-  const addNote = useCallback(async (parentId?: string, parentPosition?: { x: number; y: number }) => {
+  // Track which notes are drafts (local-only, not yet in DB)
+  const draftNoteIdsRef = useRef<Set<string>>(new Set());
+  const [draftIds, setDraftIds] = useState<Set<string>>(new Set());
+
+  const addNote = useCallback((parentId?: string, parentPosition?: { x: number; y: number }) => {
     const id = generateId();
     const position = parentPosition 
       ? { x: parentPosition.x + 20, y: parentPosition.y + 20 }
@@ -300,32 +304,59 @@ export function useNotes(voidId: string | null = null) {
       is_locked: false,
       locked_by: null,
     };
+    // Mark as draft — not saved to DB yet
+    draftNoteIdsRef.current.add(id);
     pendingNoteIdsRef.current.add(id);
+    setDraftIds(prev => new Set(prev).add(id));
     setNotes(prev => [...prev, newNote]);
-
-    const { error } = await supabase.from('notes').insert({
-      id,
-      text: '',
-      position_x: position.x,
-      position_y: position.y,
-      rotation,
-      parent_id: parentId || null,
-      color,
-      void_id: voidId,
-    });
-
-    // Always clean up pending ref, whether insert succeeded or failed
-    pendingNoteIdsRef.current.delete(id);
-
-    if (error) {
-      console.error('[useNotes] Failed to insert note:', error);
-      // Rollback optimistic update
-      setNotes(prev => prev.filter(n => n.id !== id));
-      return null;
-    }
 
     return id;
   }, [voidId]);
+
+  const publishNote = useCallback(async (id: string) => {
+    const note = notes.find(n => n.id === id);
+    if (!note) return false;
+    if (!note.text.trim()) return false; // Don't publish empty notes
+
+    const { error } = await supabase.from('notes').insert({
+      id: note.id,
+      text: note.text,
+      position_x: note.position.x,
+      position_y: note.position.y,
+      rotation: note.rotation,
+      parent_id: note.parent_id,
+      color: note.color,
+      void_id: voidId,
+      tags: note.tags,
+      shape: note.shape,
+    });
+
+    if (error) {
+      console.error('[useNotes] Failed to publish note:', error);
+      return false;
+    }
+
+    // Remove from draft tracking
+    draftNoteIdsRef.current.delete(id);
+    pendingNoteIdsRef.current.delete(id);
+    setDraftIds(prev => {
+      const next = new Set(prev);
+      next.delete(id);
+      return next;
+    });
+    return true;
+  }, [notes, voidId]);
+
+  const discardDraft = useCallback((id: string) => {
+    draftNoteIdsRef.current.delete(id);
+    pendingNoteIdsRef.current.delete(id);
+    setDraftIds(prev => {
+      const next = new Set(prev);
+      next.delete(id);
+      return next;
+    });
+    setNotes(prev => prev.filter(n => n.id !== id));
+  }, []);
 
   const updateNote = useCallback(async (id: string, updates: Partial<Pick<Note, 'text' | 'position' | 'color' | 'parent_id' | 'shape' | 'tags' | 'is_locked' | 'locked_by'>>) => {
     // Mark as recently dragged to prevent heartbeat snap-back
