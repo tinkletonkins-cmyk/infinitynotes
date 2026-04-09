@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { motion, useMotionValue, useSpring } from 'framer-motion';
-import { MessageCircle, X, GripVertical, Send, Link2, Clock, Lock } from 'lucide-react';
+import { MessageCircle, X, GripVertical, Send, Link2, Clock, Lock, Upload } from 'lucide-react';
 import { useSentiment, getEmotionClass, EmotionType } from '@/hooks/useSentiment';
 import { getAIResponse, getAIChatResponse } from '@/utils/aiResponses';
 import { useNoteMessages } from '@/hooks/useNoteMessages';
@@ -52,6 +52,9 @@ interface StickyNoteProps {
   onPositionChange?: (x: number, y: number) => void;
   onPositionComplete?: () => void;
   onEditingChange?: (isEditing: boolean) => void;
+  isDraft?: boolean;
+  onPublish?: (id: string) => Promise<boolean>;
+  onDiscard?: (id: string) => void;
 }
 
 // Direct tracking — no spring delay
@@ -93,6 +96,9 @@ export const StickyNote = React.memo(function StickyNote({
   onPositionChange,
   onPositionComplete,
   onEditingChange,
+  isDraft = false,
+  onPublish,
+  onDiscard,
 }: StickyNoteProps) {
   const [text, setText] = useState(initialText);
   const [color, setColor] = useState<string | null>(initialColor);
@@ -111,6 +117,8 @@ export const StickyNote = React.memo(function StickyNote({
   const draftSaveTimerRef = useRef<NodeJS.Timeout | null>(null);
   const lastDraftSaveRef = useRef<number>(0);
   const pendingTextRef = useRef<string>(initialText);
+  const isDraftRef = useRef(isDraft);
+  isDraftRef.current = isDraft;
   // Track whether user has manually positioned this note — prevent prop sync from snapping it back
   const hasUserPositionedRef = useRef(false);
   // Track mounted state to prevent saves after unmount
@@ -175,8 +183,8 @@ export const StickyNote = React.memo(function StickyNote({
   // Debounced draft save - saves to database every 2 seconds while typing
   const saveDraftToDatabase = useCallback(async (draftText: string) => {
     if (!isMountedRef.current) return;
+    if (isDraft) return; // Don't save drafts to DB
     const now = Date.now();
-    // Prevent saving too frequently
     if (now - lastDraftSaveRef.current < DRAFT_SAVE_INTERVAL_MS) return;
     
     lastDraftSaveRef.current = now;
@@ -187,7 +195,7 @@ export const StickyNote = React.memo(function StickyNote({
       .eq('id', id);
       
     console.log(`[StickyNote] Draft saved for note ${id}`);
-  }, [id]);
+  }, [id, isDraft]);
 
   // Set up debounced save timer when text changes
   useEffect(() => {
@@ -221,7 +229,7 @@ export const StickyNote = React.memo(function StickyNote({
       if (draftSaveTimerRef.current) {
         clearTimeout(draftSaveTimerRef.current);
       }
-      if (pendingTextRef.current !== lastSavedText) {
+      if (pendingTextRef.current !== lastSavedText && !isDraftRef.current) {
         supabase
           .from('notes')
           .update({ text: pendingTextRef.current })
@@ -444,7 +452,7 @@ export const StickyNote = React.memo(function StickyNote({
       >
       <div
         style={backgroundStyle}
-        className={`relative w-full h-full ${!displayColor ? emotionClass : ''} border border-foreground ${shape === 'circle' ? 'aspect-square flex flex-col' : ''} note-glow note-glow-${!displayColor ? emotion : 'custom'}`}
+        className={`relative w-full h-full ${!displayColor ? emotionClass : ''} ${isDraft ? 'border-2 border-dashed border-foreground/50' : 'border border-foreground'} ${shape === 'circle' ? 'aspect-square flex flex-col' : ''} note-glow note-glow-${!displayColor ? emotion : 'custom'}`}
       >
         {/* Header with drag handle */}
         <div className="flex items-center justify-between p-2 border-b border-current">
@@ -561,10 +569,39 @@ export const StickyNote = React.memo(function StickyNote({
           />
         </div>
 
-        {/* Emotion indicator */}
-        <div className="px-3 pb-2 text-xs uppercase tracking-widest opacity-70 font-mono">
-          {displayColor ? 'custom' : emotion}
-        </div>
+        {/* Draft / Publish bar */}
+        {isDraft ? (
+          <div className="px-3 pb-2 flex items-center gap-2">
+            <button
+              onClick={async (e) => {
+                e.stopPropagation();
+                if (!text.trim()) return;
+                const ok = await onPublish?.(id);
+                if (!ok) {
+                  // Publish failed — maybe text is empty
+                }
+              }}
+              disabled={!text.trim()}
+              className="flex items-center gap-1 px-2 py-1 text-xs font-mono uppercase tracking-widest bg-foreground/10 hover:bg-foreground/20 rounded transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+              title="Publish this note to the void"
+            >
+              <Upload size={12} />
+              publish
+            </button>
+            <button
+              onClick={(e) => { e.stopPropagation(); onDiscard?.(id); }}
+              className="text-xs font-mono uppercase tracking-widest opacity-50 hover:opacity-100 transition-opacity"
+              title="Discard draft"
+            >
+              discard
+            </button>
+            <span className="ml-auto text-[10px] font-mono uppercase tracking-widest opacity-40">draft</span>
+          </div>
+        ) : (
+          <div className="px-3 pb-2 text-xs uppercase tracking-widest opacity-70 font-mono">
+            {displayColor ? 'custom' : emotion}
+          </div>
+        )}
 
         {/* Inline Chat (multiplayer + AI) */}
         {showChat && (

@@ -100,6 +100,7 @@ const MemoizedNoteWrapper = React.memo(function MemoizedNoteWrapper({
   handleStartConnection, handleCompleteConnection, handleDragStateChange,
   remoteNotes, remotePositions, broadcastTyping, broadcastPosition,
   clearRemoteNote, clearRemotePosition, setNoteEditing, pulseTyping,
+  isDraft, onPublish, onDiscard,
 }: any) {
   const isMatch = noteMatchesSearch(note, searchQuery) &&
     (selectedTags.length === 0 || selectedTags.some((tag: string) => note.tags.includes(tag)));
@@ -149,6 +150,9 @@ const MemoizedNoteWrapper = React.memo(function MemoizedNoteWrapper({
       onPositionChange={onPositionChange}
       onPositionComplete={onPositionComplete}
       onEditingChange={onEditingChange}
+      isDraft={isDraft}
+      onPublish={onPublish}
+      onDiscard={onDiscard}
     />
   );
 });
@@ -159,7 +163,7 @@ function VoidBoardContent() {
   const { toast } = useToast();
   
   const [currentVoidId, setCurrentVoidId] = useState<string | null>(null);
-  const { notes, isLoading, isSyncing, lastSyncTime, addNote, updateNote, deleteNote, setNoteEditing } = useNotes(currentVoidId);
+  const { notes, isLoading, isSyncing, lastSyncTime, addNote, updateNote, deleteNote, setNoteEditing, publishNote, discardDraft, draftIds } = useNotes(currentVoidId);
   const { connections, addConnection, removeConnectionsForNote } = useConnections(currentVoidId);
   const noteIds = useMemo(() => notes.map(n => n.id), [notes]);
   const { addReaction, getReactionCounts, hasUserReacted } = useReactions(noteIds);
@@ -359,19 +363,16 @@ function VoidBoardContent() {
   const handleClearTags = useCallback(() => {
     setSelectedTags([]);
   }, []);
-  const handleAddNote = useCallback(async () => {
+  const handleAddNote = useCallback(() => {
     const viewportWidth = window.innerWidth;
     const viewportHeight = window.innerHeight;
     const nx = Math.random() * (viewportWidth - 300) + 150;
     const ny = Math.random() * (viewportHeight - 300) + 150;
     
-    const id = await addNote();
-    if (!id) {
-      toast({ title: 'Failed to create note', description: 'Could not save to database. Try again.', variant: 'destructive' });
-      return;
-    }
+    const id = addNote();
+    if (!id) return;
     pulseNoteCreated(nx, ny);
-  }, [addNote, pulseNoteCreated, toast]);
+  }, [addNote, pulseNoteCreated]);
 
   const handleNoteDrop = useCallback((
     droppedId: string,
@@ -879,6 +880,9 @@ function VoidBoardContent() {
               clearRemotePosition={clearRemotePosition}
               setNoteEditing={setNoteEditing}
               pulseTyping={pulseTyping}
+              isDraft={draftIds.has(note.id)}
+              onPublish={publishNote}
+              onDiscard={discardDraft}
             />
           );
         })}
