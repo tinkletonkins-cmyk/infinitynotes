@@ -544,36 +544,9 @@ export const StickyNote = memo(function StickyNote({
             />
           </div>
 
-          {/* Draft bar */}
-          {isDraft ? (
-            <div className="px-3 pb-2 flex items-center gap-2">
-              <button
-                onClick={async (e) => {
-                  e.stopPropagation();
-                  if (!text.trim()) return;
-                  await onPublish?.(id);
-                }}
-                disabled={!text.trim()}
-                className="flex items-center gap-1 px-2 py-1 text-xs font-mono uppercase tracking-widest bg-foreground/10 hover:bg-foreground/20 rounded transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-                title="Publish this note to the void"
-              >
-                <Upload size={12} />
-                publish
-              </button>
-              <button
-                onClick={(e) => { e.stopPropagation(); onDiscard?.(id); }}
-                className="text-xs font-mono uppercase tracking-widest opacity-50 hover:opacity-100 transition-opacity"
-                title="Discard draft"
-              >
-                discard
-              </button>
-              <span className="ml-auto text-[10px] font-mono uppercase tracking-widest opacity-40">draft</span>
-            </div>
-          ) : (
-            <div className="px-3 pb-2 text-xs uppercase tracking-widest opacity-70 font-mono">
-              {displayColor ? 'custom' : emotion}
-            </div>
-          )}
+          <div className="px-3 pb-2 text-xs uppercase tracking-widest opacity-70 font-mono">
+            {displayColor ? 'custom' : emotion}
+          </div>
 
           {/* Chat — only mounts when open; messages survive because the hook
               lives in the parent above, not inside StickyNoteChat */}

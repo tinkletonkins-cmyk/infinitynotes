@@ -163,7 +163,7 @@ function VoidBoardContent() {
   const { toast } = useToast();
   
   const [currentVoidId, setCurrentVoidId] = useState<string | null>(null);
-  const { notes, isLoading, isSyncing, lastSyncTime, addNote, updateNote, deleteNote, setNoteEditing, publishNote, discardDraft, draftIds } = useNotes(currentVoidId);
+  const { notes, isLoading, isSyncing, lastSyncTime, addNote, updateNote, deleteNote, setNoteEditing } = useNotes(currentVoidId);
   const { connections, addConnection, removeConnectionsForNote } = useConnections(currentVoidId);
   const noteIds = useMemo(() => notes.map(n => n.id), [notes]);
   const { addReaction, getReactionCounts, hasUserReacted } = useReactions(noteIds);
@@ -880,9 +880,6 @@ function VoidBoardContent() {
               clearRemotePosition={clearRemotePosition}
               setNoteEditing={setNoteEditing}
               pulseTyping={pulseTyping}
-              isDraft={draftIds.has(note.id)}
-              onPublish={publishNote}
-              onDiscard={discardDraft}
             />
           );
         })}
