@@ -100,7 +100,6 @@ const MemoizedNoteWrapper = React.memo(function MemoizedNoteWrapper({
   handleStartConnection, handleCompleteConnection, handleDragStateChange,
   remoteNotes, remotePositions, broadcastTyping, broadcastPosition,
   clearRemoteNote, clearRemotePosition, setNoteEditing, pulseTyping,
-  isDraft, onPublish, onDiscard,
 }: any) {
   const isMatch = noteMatchesSearch(note, searchQuery) &&
     (selectedTags.length === 0 || selectedTags.some((tag: string) => note.tags.includes(tag)));
@@ -150,9 +149,6 @@ const MemoizedNoteWrapper = React.memo(function MemoizedNoteWrapper({
       onPositionChange={onPositionChange}
       onPositionComplete={onPositionComplete}
       onEditingChange={onEditingChange}
-      isDraft={isDraft}
-      onPublish={onPublish}
-      onDiscard={onDiscard}
     />
   );
 });
