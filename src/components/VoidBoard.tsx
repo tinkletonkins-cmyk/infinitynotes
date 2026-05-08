@@ -34,9 +34,18 @@ import { SyncIndicator } from './SyncIndicator';
 import { EquipmentShop } from './EquipmentShop';
 import { useActiveEffects } from '@/hooks/useActiveEffects';
 import { EquipmentEffects } from './EquipmentEffects';
+import { NoteThreads } from './NoteThreads';
 
 const NOTE_WIDTH = 256;
 const NOTE_HEIGHT = 200;
+
+// Deterministic small tilt per note id for "always slightly tilted" realism
+function tiltFromId(id: string): number {
+  let h = 0;
+  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) | 0;
+  // Range roughly -6deg to +6deg
+  return ((h % 1200) / 100) - 6;
+}
 const OVERLAP_THRESHOLD = 150;
 
 function noteMatchesSearch(note: Note, query: string): boolean {
