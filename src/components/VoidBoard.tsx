@@ -889,6 +889,14 @@ function VoidBoardContent() {
           );
         })}
 
+        {/* Threads between connected notes — rendered above notes for guaranteed visibility */}
+        <NoteThreads
+          connections={connections}
+          notes={notes}
+          noteWidth={NOTE_WIDTH}
+          noteHeight={NOTE_HEIGHT}
+        />
+
       </div>
 
       {/* Empty state — outside the transformed container so it stays centered */}
