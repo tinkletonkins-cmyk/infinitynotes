@@ -593,7 +593,7 @@ function VoidBoardContent() {
     });
   }, [addConnection, toast]);
 
-  const currentVoid = currentVoidId ? voids.find(v => v.id === currentVoidId) : null;
+  const currentVoid = currentVoidEarly;
 
   // Build board theme class
   const getThemeClass = () => {
