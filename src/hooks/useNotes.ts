@@ -37,7 +37,15 @@ function getRandomPosition(): { x: number; y: number } {
   };
 }
 
-function getRandomNoteColor(): string {
+function getRandomNoteColor(boardType: 'cosmic' | 'office' = 'cosmic'): string {
+  if (boardType === 'office') {
+    // Pastel palette: Soft Yellow, Mint, Pale Rose, Sky Blue, Lavender, Peach, Cream
+    const pastels = [
+      '#FFF4B8', '#C8E6C9', '#FFD1DC', '#BBDEFB',
+      '#E1BEE7', '#FFD8B1', '#FFF8DC', '#D7E8BA',
+    ];
+    return pastels[Math.floor(Math.random() * pastels.length)];
+  }
   const colors = [
     '#FFEB3B', '#FF5722', '#2196F3', '#4CAF50',
     '#FF9800', '#9C27B0', '#E91E63', '#00BCD4',
