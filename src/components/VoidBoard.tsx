@@ -900,6 +900,7 @@ function VoidBoardContent() {
               clearRemotePosition={clearRemotePosition}
               setNoteEditing={setNoteEditing}
               pulseTyping={pulseTyping}
+              wireMode={wireMode}
             />
           );
         })}
