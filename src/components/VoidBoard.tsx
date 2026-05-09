@@ -235,6 +235,7 @@ function VoidBoardContent() {
   const [showEquipmentShop, setShowEquipmentShop] = useState(false);
   const [echoArchiveOpen, setEchoArchiveOpen] = useState(false);
   const [showUpdateLog, setShowUpdateLog] = useState(false);
+  const [wireMode, setWireMode] = useState(false);
   // Track mouse movement between down and up to distinguish click from drag
   const mouseDownPos = React.useRef<{ x: number; y: number } | null>(null);
 
