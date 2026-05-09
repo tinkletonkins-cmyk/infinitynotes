@@ -109,6 +109,7 @@ const MemoizedNoteWrapper = React.memo(function MemoizedNoteWrapper({
   handleStartConnection, handleCompleteConnection, handleDragStateChange,
   remoteNotes, remotePositions, broadcastTyping, broadcastPosition,
   clearRemoteNote, clearRemotePosition, setNoteEditing, pulseTyping,
+  wireMode,
 }: any) {
   const isMatch = noteMatchesSearch(note, searchQuery) &&
     (selectedTags.length === 0 || selectedTags.some((tag: string) => note.tags.includes(tag)));
