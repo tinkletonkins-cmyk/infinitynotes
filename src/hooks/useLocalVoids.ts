@@ -1,17 +1,22 @@
 import { useState, useCallback, useEffect } from 'react';
 
+export type BoardType = 'cosmic' | 'office';
+
 export interface LocalVoid {
   id: string;
   name: string;
   createdAt: number;
   inviteCode: string;
+  boardType: BoardType;
 }
 
 const STORAGE_KEY = 'void-local-voids';
 
 function load(): LocalVoid[] {
   try {
-    return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+    const raw = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+    // Backfill boardType for legacy entries
+    return raw.map((v: any) => ({ ...v, boardType: v.boardType ?? 'cosmic' }));
   } catch {
     return [];
   }
@@ -32,12 +37,13 @@ export function useLocalVoids() {
     save(voids);
   }, [voids]);
 
-  const createVoid = useCallback((name: string): LocalVoid => {
+  const createVoid = useCallback((name: string, boardType: BoardType = 'cosmic'): LocalVoid => {
     const v: LocalVoid = {
       id: crypto.randomUUID(),
       name: name.trim() || 'Untitled Void',
       createdAt: Date.now(),
       inviteCode: generateCode(),
+      boardType,
     };
     setVoids(prev => [v, ...prev]);
     return v;
@@ -52,7 +58,7 @@ export function useLocalVoids() {
   }, []);
 
   const addVoid = useCallback((v: LocalVoid) => {
-    setVoids(prev => prev.some(x => x.id === v.id) ? prev : [v, ...prev]);
+    setVoids(prev => prev.some(x => x.id === v.id) ? prev : [{ ...v, boardType: v.boardType ?? 'cosmic' }, ...prev]);
   }, []);
 
   return { voids, createVoid, deleteVoid, renameVoid, addVoid };
