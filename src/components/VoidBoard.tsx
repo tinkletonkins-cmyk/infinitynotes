@@ -109,6 +109,7 @@ const MemoizedNoteWrapper = React.memo(function MemoizedNoteWrapper({
   handleStartConnection, handleCompleteConnection, handleDragStateChange,
   remoteNotes, remotePositions, broadcastTyping, broadcastPosition,
   clearRemoteNote, clearRemotePosition, setNoteEditing, pulseTyping,
+  wireMode,
 }: any) {
   const isMatch = noteMatchesSearch(note, searchQuery) &&
     (selectedTags.length === 0 || selectedTags.some((tag: string) => note.tags.includes(tag)));
@@ -158,6 +159,7 @@ const MemoizedNoteWrapper = React.memo(function MemoizedNoteWrapper({
       onPositionChange={onPositionChange}
       onPositionComplete={onPositionComplete}
       onEditingChange={onEditingChange}
+      wireMode={wireMode}
     />
   );
 });
@@ -168,7 +170,9 @@ function VoidBoardContent() {
   const { toast } = useToast();
   
   const [currentVoidId, setCurrentVoidId] = useState<string | null>(null);
-  const { notes, isLoading, isSyncing, lastSyncTime, addNote, updateNote, deleteNote, setNoteEditing } = useNotes(currentVoidId);
+  const currentVoidEarly = currentVoidId ? voids.find(v => v.id === currentVoidId) : null;
+  const isOfficeBoard = currentVoidEarly?.boardType === 'office';
+  const { notes, isLoading, isSyncing, lastSyncTime, addNote, updateNote, deleteNote, setNoteEditing } = useNotes(currentVoidId, isOfficeBoard ? 'office' : 'cosmic');
   const { connections, addConnection, removeConnectionsForNote } = useConnections(currentVoidId);
   const noteIds = useMemo(() => notes.map(n => n.id), [notes]);
   const { addReaction, getReactionCounts, hasUserReacted } = useReactions(noteIds);
@@ -231,6 +235,7 @@ function VoidBoardContent() {
   const [showEquipmentShop, setShowEquipmentShop] = useState(false);
   const [echoArchiveOpen, setEchoArchiveOpen] = useState(false);
   const [showUpdateLog, setShowUpdateLog] = useState(false);
+  const [wireMode, setWireMode] = useState(false);
   // Track mouse movement between down and up to distinguish click from drag
   const mouseDownPos = React.useRef<{ x: number; y: number } | null>(null);
 
@@ -519,6 +524,7 @@ function VoidBoardContent() {
 
     await addConnection(connectingFrom, targetId);
     setConnectingFrom(null);
+    setWireMode(false);
   }, [connectingFrom, notes, getPosition, addConnection, updateNote]);
 
   const cancelConnection = useCallback(() => {
@@ -536,9 +542,9 @@ function VoidBoardContent() {
     }));
   }, []);
 
-  const handleCreateVoid = async (name: string) => {
+  const handleCreateVoid = async (name: string, boardType: 'cosmic' | 'office' = 'cosmic') => {
     // Use RPC so both guests and signed-in users can create voids
-    const { data, error } = await supabase.rpc('create_guest_void', { _name: name });
+    const { data, error } = await supabase.rpc('create_guest_void', { _name: name, _board_type: boardType } as any);
 
     if (error || !data || data.length === 0) {
       console.error('Failed to create void:', error);
@@ -546,10 +552,19 @@ function VoidBoardContent() {
       return;
     }
 
-    const created = data[0];
-    addVoid({ id: created.id, name: created.name, createdAt: Date.now(), inviteCode: created.invite_code ?? '' });
+    const created: any = data[0];
+    addVoid({
+      id: created.id,
+      name: created.name,
+      createdAt: Date.now(),
+      inviteCode: created.invite_code ?? '',
+      boardType: (created.board_type as 'cosmic' | 'office') ?? boardType,
+    });
     setCurrentVoidId(created.id);
-    toast({ title: 'Void created!', description: `Code: ${created.invite_code} — share it to invite others` });
+    toast({
+      title: boardType === 'office' ? 'Office Board created!' : 'Void created!',
+      description: `Code: ${created.invite_code} — share it to invite others`,
+    });
   };
 
   const handleDeleteVoid = async (id: string) => {
@@ -582,10 +597,11 @@ function VoidBoardContent() {
     });
   }, [addConnection, toast]);
 
-  const currentVoid = currentVoidId ? voids.find(v => v.id === currentVoidId) : null;
+  const currentVoid = currentVoidEarly;
 
   // Build board theme class
   const getThemeClass = () => {
+    if (isOfficeBoard) return 'office-mode';
     if (boardTheme === 'board') return 'mode-board';
     if (boardTheme === 'void') return '';
     return `theme-${boardTheme}`;
@@ -806,6 +822,14 @@ function VoidBoardContent() {
         <span className="text-xs uppercase tracking-widest font-mono">Connect</span>
       </button>
 
+      <button
+        onClick={() => { setWireMode(w => !w); setConnectingFrom(null); }}
+        className={`fixed top-[320px] right-4 z-50 flex items-center gap-2 px-3 py-2 border transition-colors ${wireMode ? 'bg-yellow-400 text-black border-yellow-400' : 'border-foreground bg-background hover:bg-foreground hover:text-background'}`}
+        title={wireMode ? 'Disable wire mode' : 'Wire mode: click two notes to connect them'}
+      >
+        <Link2 size={14} />
+        <span className="text-xs uppercase tracking-widest font-mono">{wireMode ? 'Wiring…' : 'Wire'}</span>
+      </button>
 
       {isLoading && (
         <div className="pt-16 min-h-screen relative z-10">
@@ -885,6 +909,7 @@ function VoidBoardContent() {
               clearRemotePosition={clearRemotePosition}
               setNoteEditing={setNoteEditing}
               pulseTyping={pulseTyping}
+              wireMode={wireMode}
             />
           );
         })}

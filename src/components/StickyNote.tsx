@@ -58,6 +58,7 @@ interface StickyNoteProps {
   isDraft?: boolean;
   onPublish?: (id: string) => Promise<boolean>;
   onDiscard?: (id: string) => void;
+  wireMode?: boolean;
 }
 
 // ─── Chat panel (only mounted when open) ─────────────────────────────────────
@@ -239,6 +240,7 @@ export const StickyNote = memo(function StickyNote({
   isDraft = false,
   onPublish,
   onDiscard,
+  wireMode = false,
 }: StickyNoteProps) {
 
   // ── Text / content state ──────────────────────────────────────────────────
@@ -462,7 +464,8 @@ export const StickyNote = memo(function StickyNote({
         onDrag={canDrag ? handleDrag : undefined}
         onDragEnd={canDrag ? handleDragEnd : undefined}
         onClick={(e: React.MouseEvent) => {
-          if (isConnectionTarget) { e.stopPropagation(); onCompleteConnection(id); }
+          if (isConnectionTarget) { e.stopPropagation(); onCompleteConnection(id); return; }
+          if (wireMode && !isConnecting) { e.stopPropagation(); onStartConnection(id); }
         }}
         whileDrag={canDrag ? { scale: 1.02, boxShadow: '0 10px 30px rgba(0,0,0,0.3)', cursor: 'grabbing' } : undefined}
         transition={{ scale: { duration: 0.1 }, boxShadow: { duration: 0.1 } }}

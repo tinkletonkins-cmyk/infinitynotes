@@ -393,6 +393,7 @@ export type Database = {
       }
       voids: {
         Row: {
+          board_type: string
           created_at: string
           energy_cost: number
           id: string
@@ -404,6 +405,7 @@ export type Database = {
           visual_tier: number
         }
         Insert: {
+          board_type?: string
           created_at?: string
           energy_cost?: number
           id?: string
@@ -415,6 +417,7 @@ export type Database = {
           visual_tier?: number
         }
         Update: {
+          board_type?: string
           created_at?: string
           energy_cost?: number
           id?: string
@@ -432,14 +435,24 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      create_guest_void: {
-        Args: { _name: string }
-        Returns: {
-          id: string
-          invite_code: string
-          name: string
-        }[]
-      }
+      create_guest_void:
+        | {
+            Args: { _name: string }
+            Returns: {
+              id: string
+              invite_code: string
+              name: string
+            }[]
+          }
+        | {
+            Args: { _board_type?: string; _name: string }
+            Returns: {
+              board_type: string
+              id: string
+              invite_code: string
+              name: string
+            }[]
+          }
       ensure_player_energy: { Args: never; Returns: number }
       lookup_multiplayer_void: {
         Args: { _invite_code: string }
