@@ -821,8 +821,14 @@ function VoidBoardContent() {
         <span className="text-xs uppercase tracking-widest font-mono">Connect</span>
       </button>
 
-
-      {isLoading && (
+      <button
+        onClick={() => { setWireMode(w => !w); setConnectingFrom(null); }}
+        className={`fixed top-[320px] right-4 z-50 flex items-center gap-2 px-3 py-2 border transition-colors ${wireMode ? 'bg-yellow-400 text-black border-yellow-400' : 'border-foreground bg-background hover:bg-foreground hover:text-background'}`}
+        title={wireMode ? 'Disable wire mode' : 'Wire mode: click two notes to connect them'}
+      >
+        <Link2 size={14} />
+        <span className="text-xs uppercase tracking-widest font-mono">{wireMode ? 'Wiring…' : 'Wire'}</span>
+      </button>
         <div className="pt-16 min-h-screen relative z-10">
           {[...Array(5)].map((_, i) => (
             <div
