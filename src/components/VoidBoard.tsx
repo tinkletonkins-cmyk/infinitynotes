@@ -168,7 +168,9 @@ function VoidBoardContent() {
   const { toast } = useToast();
   
   const [currentVoidId, setCurrentVoidId] = useState<string | null>(null);
-  const { notes, isLoading, isSyncing, lastSyncTime, addNote, updateNote, deleteNote, setNoteEditing } = useNotes(currentVoidId);
+  const currentVoidEarly = currentVoidId ? voids.find(v => v.id === currentVoidId) : null;
+  const isOfficeBoard = currentVoidEarly?.boardType === 'office';
+  const { notes, isLoading, isSyncing, lastSyncTime, addNote, updateNote, deleteNote, setNoteEditing } = useNotes(currentVoidId, isOfficeBoard ? 'office' : 'cosmic');
   const { connections, addConnection, removeConnectionsForNote } = useConnections(currentVoidId);
   const noteIds = useMemo(() => notes.map(n => n.id), [notes]);
   const { addReaction, getReactionCounts, hasUserReacted } = useReactions(noteIds);
