@@ -240,6 +240,7 @@ export const StickyNote = memo(function StickyNote({
   isDraft = false,
   onPublish,
   onDiscard,
+  wireMode = false,
 }: StickyNoteProps) {
 
   // ── Text / content state ──────────────────────────────────────────────────
