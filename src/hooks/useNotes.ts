@@ -54,7 +54,7 @@ function getRandomNoteColor(boardType: 'cosmic' | 'office' = 'cosmic'): string {
   return colors[Math.floor(Math.random() * colors.length)];
 }
 
-export function useNotes(voidId: string | null = null) {
+export function useNotes(voidId: string | null = null, boardType: 'cosmic' | 'office' = 'cosmic') {
   const [notes, setNotes] = useState<Note[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSyncing, setIsSyncing] = useState(false);
