@@ -58,6 +58,7 @@ interface StickyNoteProps {
   isDraft?: boolean;
   onPublish?: (id: string) => Promise<boolean>;
   onDiscard?: (id: string) => void;
+  wireMode?: boolean;
 }
 
 // ─── Chat panel (only mounted when open) ─────────────────────────────────────
