@@ -293,7 +293,7 @@ export function useNotes(voidId: string | null = null, boardType: 'cosmic' | 'of
       ? { x: parentPosition.x + 20, y: parentPosition.y + 20 }
       : getRandomPosition();
     const rotation = getRandomRotation();
-    const color = getRandomNoteColor();
+    const color = getRandomNoteColor(boardType);
 
     const newNote: Note = {
       id,
