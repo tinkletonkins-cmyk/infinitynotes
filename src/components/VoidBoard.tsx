@@ -159,6 +159,7 @@ const MemoizedNoteWrapper = React.memo(function MemoizedNoteWrapper({
       onPositionChange={onPositionChange}
       onPositionComplete={onPositionComplete}
       onEditingChange={onEditingChange}
+      wireMode={wireMode}
     />
   );
 });
