@@ -829,6 +829,8 @@ function VoidBoardContent() {
         <Link2 size={14} />
         <span className="text-xs uppercase tracking-widest font-mono">{wireMode ? 'Wiring…' : 'Wire'}</span>
       </button>
+
+      {isLoading && (
         <div className="pt-16 min-h-screen relative z-10">
           {[...Array(5)].map((_, i) => (
             <div
