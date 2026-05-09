@@ -536,9 +536,9 @@ function VoidBoardContent() {
     }));
   }, []);
 
-  const handleCreateVoid = async (name: string) => {
+  const handleCreateVoid = async (name: string, boardType: 'cosmic' | 'office' = 'cosmic') => {
     // Use RPC so both guests and signed-in users can create voids
-    const { data, error } = await supabase.rpc('create_guest_void', { _name: name });
+    const { data, error } = await supabase.rpc('create_guest_void', { _name: name, _board_type: boardType } as any);
 
     if (error || !data || data.length === 0) {
       console.error('Failed to create void:', error);
@@ -546,10 +546,19 @@ function VoidBoardContent() {
       return;
     }
 
-    const created = data[0];
-    addVoid({ id: created.id, name: created.name, createdAt: Date.now(), inviteCode: created.invite_code ?? '' });
+    const created: any = data[0];
+    addVoid({
+      id: created.id,
+      name: created.name,
+      createdAt: Date.now(),
+      inviteCode: created.invite_code ?? '',
+      boardType: (created.board_type as 'cosmic' | 'office') ?? boardType,
+    });
     setCurrentVoidId(created.id);
-    toast({ title: 'Void created!', description: `Code: ${created.invite_code} — share it to invite others` });
+    toast({
+      title: boardType === 'office' ? 'Office Board created!' : 'Void created!',
+      description: `Code: ${created.invite_code} — share it to invite others`,
+    });
   };
 
   const handleDeleteVoid = async (id: string) => {
