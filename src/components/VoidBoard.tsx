@@ -597,6 +597,7 @@ function VoidBoardContent() {
 
   // Build board theme class
   const getThemeClass = () => {
+    if (isOfficeBoard) return 'office-mode';
     if (boardTheme === 'board') return 'mode-board';
     if (boardTheme === 'void') return '';
     return `theme-${boardTheme}`;
