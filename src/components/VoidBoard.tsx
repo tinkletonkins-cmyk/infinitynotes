@@ -524,6 +524,7 @@ function VoidBoardContent() {
 
     await addConnection(connectingFrom, targetId);
     setConnectingFrom(null);
+    setWireMode(false);
   }, [connectingFrom, notes, getPosition, addConnection, updateNote]);
 
   const cancelConnection = useCallback(() => {
