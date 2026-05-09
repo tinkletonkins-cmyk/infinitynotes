@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronDown, Plus, Copy, Trash2, Check, Users } from 'lucide-react';
-import { LocalVoid } from '@/hooks/useLocalVoids';
+import { ChevronDown, Plus, Copy, Trash2, Check, Users, Briefcase, Sparkles } from 'lucide-react';
+import { LocalVoid, BoardType } from '@/hooks/useLocalVoids';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -9,28 +9,29 @@ interface VoidSwitcherProps {
   currentVoidId: string | null;
   voids: LocalVoid[];
   onSwitchVoid: (id: string | null) => void;
-  onCreateVoid: (name: string) => void;
+  onCreateVoid: (name: string, boardType?: BoardType) => void;
   onDeleteVoid: (id: string) => void;
   onJoinVoid: (v: LocalVoid) => void;
 }
 
 export function VoidSwitcher({ currentVoidId, voids, onSwitchVoid, onCreateVoid, onDeleteVoid, onJoinVoid }: VoidSwitcherProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const [mode, setMode] = useState<'list' | 'create' | 'join'>('list');
+  const [mode, setMode] = useState<'list' | 'create-cosmic' | 'create-office' | 'join'>('list');
   const [newName, setNewName] = useState('');
   const [joinCode, setJoinCode] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
   const current = voids.find(v => v.id === currentVoidId);
+  const isOffice = current?.boardType === 'office';
 
   useEffect(() => {
     if (mode !== 'list') setTimeout(() => inputRef.current?.focus(), 50);
   }, [mode]);
 
-  const handleCreate = () => {
+  const handleCreate = (boardType: BoardType) => {
     if (!newName.trim()) return;
-    onCreateVoid(newName.trim());
+    onCreateVoid(newName.trim(), boardType);
     setNewName('');
     setMode('list');
     setIsOpen(false);
@@ -40,7 +41,6 @@ export function VoidSwitcher({ currentVoidId, voids, onSwitchVoid, onCreateVoid,
     const code = joinCode.trim().toUpperCase();
     if (!code) return;
     
-    // Use RPC to look up void — works for both guests and signed-in users
     const { data, error } = await supabase.rpc('lookup_multiplayer_void', { _invite_code: code });
     
     if (error || !data || data.length === 0) {
@@ -48,19 +48,23 @@ export function VoidSwitcher({ currentVoidId, voids, onSwitchVoid, onCreateVoid,
       return;
     }
 
-    const found = data[0];
+    const found: any = data[0];
     
-    // Add as a member if authenticated (optional, not required)
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
       await supabase.from('void_members').insert({ void_id: found.id, user_id: user.id }).select();
     }
     
+    // Look up board_type directly from voids table since RPC may not return it
+    const { data: voidRow } = await supabase.from('voids').select('board_type').eq('id', found.id).single();
+    const boardType: BoardType = ((voidRow as any)?.board_type === 'office' ? 'office' : 'cosmic');
+
     const localVoid: LocalVoid = {
       id: found.id,
       name: found.name,
       createdAt: Date.now(),
       inviteCode: found.invite_code ?? code,
+      boardType,
     };
     onJoinVoid(localVoid);
     onSwitchVoid(found.id);
@@ -81,9 +85,14 @@ export function VoidSwitcher({ currentVoidId, voids, onSwitchVoid, onCreateVoid,
     <div className="relative">
       <button
         onClick={() => setIsOpen(o => !o)}
-        className="flex items-center gap-2 px-4 py-2 border border-foreground bg-background hover:bg-muted transition-colors"
+        className={`flex items-center gap-2 px-4 py-2 border transition-colors ${
+          isOffice
+            ? 'border-zinc-400 bg-gradient-to-b from-zinc-200 to-zinc-300 text-zinc-800 hover:from-zinc-100 hover:to-zinc-200 shadow-sm'
+            : 'border-foreground bg-background hover:bg-muted'
+        }`}
       >
-        <span className="text-sm font-mono uppercase tracking-wider max-w-32 truncate">
+        {isOffice ? <Briefcase size={13} /> : <Sparkles size={13} />}
+        <span className={`text-sm max-w-32 truncate ${isOffice ? 'font-sans tracking-wide' : 'font-mono uppercase tracking-wider'}`}>
           {current ? current.name : 'Select Void'}
         </span>
         <ChevronDown size={14} className={`transition-transform ${isOpen ? 'rotate-180' : ''}`} />
@@ -111,11 +120,12 @@ export function VoidSwitcher({ currentVoidId, voids, onSwitchVoid, onCreateVoid,
               {voids.length > 0 && (
                 <>
                   <div className="border-t border-foreground/20" />
-                  <div className="px-4 py-1.5 text-[10px] font-mono uppercase tracking-widest text-muted-foreground">Multiplayer</div>
+                  <div className="px-4 py-1.5 text-[10px] font-mono uppercase tracking-widest text-muted-foreground">Your Boards</div>
                   {voids.map(v => (
                     <div key={v.id} className={`flex items-center gap-1 px-4 py-2 hover:bg-muted transition-colors ${currentVoidId === v.id ? 'bg-muted' : ''}`}>
-                      <button onClick={() => { onSwitchVoid(v.id); close(); }} className="flex-1 text-left text-sm font-mono uppercase tracking-wider truncate">
-                        {v.name}
+                      <button onClick={() => { onSwitchVoid(v.id); close(); }} className="flex-1 flex items-center gap-2 text-left text-sm font-mono uppercase tracking-wider truncate">
+                        {v.boardType === 'office' ? <Briefcase size={12} className="opacity-60 flex-shrink-0" /> : <Sparkles size={12} className="opacity-60 flex-shrink-0" />}
+                        <span className="truncate">{v.name}</span>
                       </button>
                       <button onClick={() => copyCode(v.inviteCode)} className="p-1.5 opacity-50 hover:opacity-100" title={`Code: ${v.inviteCode}`}>
                         <Copy size={13} />
@@ -130,14 +140,14 @@ export function VoidSwitcher({ currentVoidId, voids, onSwitchVoid, onCreateVoid,
 
               <div className="border-t border-foreground/20" />
 
-              {mode === 'create' && (
+              {(mode === 'create-cosmic' || mode === 'create-office') && (
                 <div className="flex items-center gap-2 px-4 py-2">
                   <input ref={inputRef} value={newName} onChange={e => setNewName(e.target.value)}
-                    onKeyDown={e => { if (e.key === 'Enter') handleCreate(); if (e.key === 'Escape') setMode('list'); }}
-                    placeholder="void name..."
+                    onKeyDown={e => { if (e.key === 'Enter') handleCreate(mode === 'create-office' ? 'office' : 'cosmic'); if (e.key === 'Escape') setMode('list'); }}
+                    placeholder={mode === 'create-office' ? 'office board name...' : 'void name...'}
                     className="flex-1 bg-transparent border-b border-foreground text-sm font-mono uppercase tracking-wider focus:outline-none placeholder:opacity-30 py-1"
                   />
-                  <button onClick={handleCreate} className="p-1 hover:opacity-70"><Check size={14} /></button>
+                  <button onClick={() => handleCreate(mode === 'create-office' ? 'office' : 'cosmic')} className="p-1 hover:opacity-70"><Check size={14} /></button>
                 </div>
               )}
 
@@ -156,9 +166,13 @@ export function VoidSwitcher({ currentVoidId, voids, onSwitchVoid, onCreateVoid,
 
               {mode === 'list' && (
                 <>
-                  <button onClick={() => setMode('create')} className="w-full flex items-center gap-3 px-4 py-3 hover:bg-muted transition-colors text-left text-muted-foreground hover:text-foreground">
-                    <Plus size={15} />
-                    <span className="text-sm font-mono uppercase tracking-wider">New Multiplayer Void</span>
+                  <button onClick={() => setMode('create-cosmic')} className="w-full flex items-center gap-3 px-4 py-3 hover:bg-muted transition-colors text-left text-muted-foreground hover:text-foreground">
+                    <Sparkles size={15} />
+                    <span className="text-sm font-mono uppercase tracking-wider">New Cosmic Void</span>
+                  </button>
+                  <button onClick={() => setMode('create-office')} className="w-full flex items-center gap-3 px-4 py-3 hover:bg-muted transition-colors text-left text-muted-foreground hover:text-foreground">
+                    <Briefcase size={15} />
+                    <span className="text-sm font-mono uppercase tracking-wider">New Office Board</span>
                   </button>
                   <button onClick={() => setMode('join')} className="w-full flex items-center gap-3 px-4 py-3 hover:bg-muted transition-colors text-left text-muted-foreground hover:text-foreground">
                     <Users size={15} />
