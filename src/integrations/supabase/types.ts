@@ -393,6 +393,7 @@ export type Database = {
       }
       voids: {
         Row: {
+          board_type: string
           created_at: string
           energy_cost: number
           id: string
@@ -404,6 +405,7 @@ export type Database = {
           visual_tier: number
         }
         Insert: {
+          board_type?: string
           created_at?: string
           energy_cost?: number
           id?: string
@@ -415,6 +417,7 @@ export type Database = {
           visual_tier?: number
         }
         Update: {
+          board_type?: string
           created_at?: string
           energy_cost?: number
           id?: string
