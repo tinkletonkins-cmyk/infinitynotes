@@ -390,13 +390,29 @@ export const StickyNote = memo(function StickyNote({
     hasUserPositionedRef.current = true;
     const currentPos = { x: x.get(), y: y.get() };
     const snapped = snapPosition(currentPos);
-    const newPos = { x: snapped.x, y: snapped.y };
-    if (snapped.snappedX || snapped.snappedY) { x.set(newPos.x); y.set(newPos.y); }
+    let newPos = { x: snapped.x, y: snapped.y };
+    // Staggered stacking: if dropped on top of another note, offset by 15px so
+    // the note underneath stays partially visible.
+    const STACK_THRESHOLD = 40;
+    const STACK_OFFSET = 15;
+    let safety = 0;
+    while (safety++ < 20) {
+      let collided = false;
+      positions.forEach((other, otherId) => {
+        if (otherId === id) return;
+        if (Math.abs(other.x - newPos.x) < STACK_THRESHOLD && Math.abs(other.y - newPos.y) < STACK_THRESHOLD) {
+          newPos = { x: other.x + STACK_OFFSET, y: other.y + STACK_OFFSET };
+          collided = true;
+        }
+      });
+      if (!collided) break;
+    }
+    x.set(newPos.x); y.set(newPos.y);
     updatePosition(id, newPos);
     onDrop(id, newPos);
     onDragStateChange?.(id, false, newPos.x, newPos.y);
     onPositionComplete?.();
-  }, [id, x, y, snapPosition, updatePosition, onDrop, onDragStateChange, onPositionComplete]);
+  }, [id, x, y, snapPosition, positions, updatePosition, onDrop, onDragStateChange, onPositionComplete]);
 
   // ── Content handlers ──────────────────────────────────────────────────────
   const handleColorChange = useCallback((newColor: string | null) => {
