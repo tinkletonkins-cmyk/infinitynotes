@@ -23,6 +23,7 @@ import { ConstellationMode } from './ConstellationMode';
 import { MoodWeather } from './MoodWeather';
 import { VoidSummaryModal } from './VoidSummaryModal';
 import { ConnectionSuggestions } from './ConnectionSuggestions';
+import { LassoSelect } from './LassoSelect';
 import { BoardThemePicker, BoardTheme } from './BoardThemePicker';
 import { MiniMap } from './MiniMap';
 import { UpdateLog } from './UpdateLog';
