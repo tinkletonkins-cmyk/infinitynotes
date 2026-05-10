@@ -454,109 +454,191 @@
     50% { box-shadow: 0 0 16px hsl(45 90% 55% / 0.5), 0 0 30px hsl(270 60% 40% / 0.4); }
   }
 
-  /* ─── OFFICE BOARD MODE ───────────────────────────────────────────────
-     Tactile paper aesthetic: pastel notes, sans-serif, brushed-metal UI.
-     Activated via .office-mode on the .void-board root.
-  */
+  /* ─── OFFICE BOARD MODE ─ Skeuomorphic Physical Office ─────────────── */
   .void-board.office-mode {
+    /* Off-white whiteboard with crisp 30px dark-grey grid */
     background:
-      /* subtle dot grid (whiteboard texture) */
-      radial-gradient(circle at 1px 1px, hsl(210 15% 80% / 0.6) 1px, transparent 0),
-      /* whiteboard surface */
-      linear-gradient(135deg, hsl(210 25% 96%) 0%, hsl(210 20% 92%) 100%);
-    background-size: 32px 32px, 100% 100%;
+      linear-gradient(hsl(220 8% 70% / 0.35) 1px, transparent 1px),
+      linear-gradient(90deg, hsl(220 8% 70% / 0.35) 1px, transparent 1px),
+      linear-gradient(160deg, hsl(40 25% 97%) 0%, hsl(40 18% 94%) 100%);
+    background-size: 30px 30px, 30px 30px, 100% 100%;
     cursor: default;
-    /* Override the dark theme tokens for office mode */
-    --foreground: 220 15% 20%;
-    --muted-foreground: 220 10% 40%;
+    /* Brushed aluminum frame around the viewport */
+    border: 14px solid;
+    border-image: linear-gradient(
+      135deg,
+      hsl(0 0% 78%) 0%,
+      hsl(0 0% 92%) 25%,
+      hsl(0 0% 70%) 50%,
+      hsl(0 0% 88%) 75%,
+      hsl(0 0% 75%) 100%
+    ) 1;
+    box-shadow:
+      inset 0 0 0 2px hsl(0 0% 55%),
+      inset 0 0 0 4px hsl(0 0% 90%),
+      inset 0 0 40px hsl(220 15% 60% / 0.15),
+      0 10px 40px hsl(0 0% 0% / 0.3);
+    --foreground: 220 15% 18%;
+    --muted-foreground: 220 10% 38%;
     --background: 0 0% 100%;
     --muted: 210 20% 94%;
-    --border: 220 15% 75%;
+    --border: 220 15% 70%;
   }
   .void-board.office-mode,
   .void-board.office-mode * {
     cursor: auto !important;
   }
 
-  /* Notes inside Office mode: paper texture, sharp shadow, soft border, sans-serif */
+  /* Notes: paper card with curl, deep shadow, lifted corner */
   .void-board.office-mode [class*="note-shape-"] > div {
-    /* stronger sticky-note feel */
     box-shadow:
-      4px 4px 0 0 hsl(220 15% 25% / 0.18),
-      0 1px 0 0 hsl(0 0% 100% / 0.6) inset;
-    border: 1px solid hsl(220 15% 70% / 0.5) !important;
+      3px 5px 15px rgba(0, 0, 0, 0.2),
+      0 1px 0 0 hsl(0 0% 100% / 0.8) inset,
+      inset -20px -20px 25px -20px hsl(0 0% 0% / 0.18);
+    border: 1px solid hsl(220 10% 75% / 0.6) !important;
     background-image:
+      /* curled bottom-right corner shading */
+      linear-gradient(
+        315deg,
+        hsl(0 0% 0% / 0.12) 0%,
+        transparent 18%
+      ),
+      /* very subtle paper grain */
       repeating-linear-gradient(
-        135deg,
-        hsl(0 0% 100% / 0.04) 0 2px,
-        transparent 2px 6px
+        45deg,
+        hsl(0 0% 0% / 0.015) 0 1px,
+        transparent 1px 3px
       );
+    position: relative;
+  }
+  /* Folded corner curl effect */
+  .void-board.office-mode [class*="note-shape-square"] > div::after,
+  .void-board.office-mode [class*="note-shape-torn"] > div::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    width: 18px;
+    height: 18px;
+    background: linear-gradient(
+      135deg,
+      transparent 50%,
+      hsl(0 0% 0% / 0.18) 50%,
+      hsl(0 0% 100% / 0.9) 56%,
+      hsl(0 0% 90%) 100%
+    );
+    pointer-events: none;
+    box-shadow: -1px -1px 2px hsl(0 0% 0% / 0.1);
   }
 
-  /* Replace handwriting font with clean Inter on note textareas */
+  /* Handwritten font on note text — feels like a real marker */
   .void-board.office-mode textarea.font-handwriting,
   .void-board.office-mode .font-handwriting {
-    font-family: 'Inter', -apple-system, sans-serif !important;
-    font-size: 0.95rem !important;
-    line-height: 1.45 !important;
+    font-family: 'Caveat', 'Kalam', cursive !important;
+    font-size: 1.35rem !important;
+    line-height: 1.3 !important;
     letter-spacing: 0 !important;
-    font-weight: 500 !important;
+    font-weight: 600 !important;
+    color: hsl(220 25% 18%) !important;
   }
 
-  /* Kill emotion glow auras in office mode — keep it tactile, not neon */
+  /* Kill emotion neon glow — keep tactile shadow only */
   .void-board.office-mode [class*="note-glow-"] {
     box-shadow:
-      4px 4px 0 0 hsl(220 15% 25% / 0.18),
-      0 1px 0 0 hsl(0 0% 100% / 0.6) inset !important;
+      3px 5px 15px rgba(0, 0, 0, 0.2),
+      0 1px 0 0 hsl(0 0% 100% / 0.8) inset,
+      inset -20px -20px 25px -20px hsl(0 0% 0% / 0.18) !important;
   }
 
-  /* Brushed-metal toolbar buttons in office mode */
-  .void-board.office-mode > button,
-  .void-board.office-mode > div > button,
-  .void-board.office-mode header button {
-    background: linear-gradient(180deg,
-      hsl(210 10% 95%) 0%,
-      hsl(210 8% 88%) 50%,
-      hsl(210 10% 82%) 100%) !important;
-    color: hsl(220 15% 25%) !important;
-    border: 1px solid hsl(220 12% 65%) !important;
+  /* Embossed brushed-metal plate buttons */
+  .void-board.office-mode button {
+    background:
+      linear-gradient(180deg,
+        hsl(0 0% 94%) 0%,
+        hsl(0 0% 86%) 45%,
+        hsl(0 0% 78%) 55%,
+        hsl(0 0% 88%) 100%) !important;
+    background-size: 100% 100%, 4px 100% !important;
+    color: hsl(220 18% 22%) !important;
+    border: 1px solid hsl(0 0% 55%) !important;
     box-shadow:
-      0 1px 0 hsl(0 0% 100% / 0.7) inset,
-      0 1px 2px hsl(220 20% 30% / 0.15);
+      0 1px 0 hsl(0 0% 100% / 0.9) inset,
+      0 -1px 0 hsl(0 0% 50% / 0.4) inset,
+      0 2px 4px hsl(0 0% 0% / 0.25),
+      0 1px 0 hsl(0 0% 30% / 0.3);
     font-family: 'Inter', sans-serif !important;
-    text-transform: none !important;
-    letter-spacing: 0.02em !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.08em !important;
+    font-weight: 700 !important;
+    text-shadow:
+      0 1px 0 hsl(0 0% 100% / 0.7),
+      0 -1px 0 hsl(0 0% 0% / 0.2);
   }
-  .void-board.office-mode > button:hover,
-  .void-board.office-mode > div > button:hover,
-  .void-board.office-mode header button:hover {
+  .void-board.office-mode button:hover {
     background: linear-gradient(180deg,
-      hsl(210 10% 98%) 0%,
-      hsl(210 8% 92%) 50%,
-      hsl(210 10% 86%) 100%) !important;
+      hsl(0 0% 98%) 0%,
+      hsl(0 0% 90%) 45%,
+      hsl(0 0% 82%) 55%,
+      hsl(0 0% 92%) 100%) !important;
+  }
+  .void-board.office-mode button:active {
+    box-shadow:
+      0 1px 2px hsl(0 0% 0% / 0.3) inset,
+      0 -1px 0 hsl(0 0% 100% / 0.5) inset !important;
+    transform: translateY(1px);
   }
 
-  /* Office header: light, clean */
+  /* Header: brushed-aluminum bar */
   .void-board.office-mode header {
     background: linear-gradient(180deg,
-      hsl(210 15% 96%) 0%,
-      hsl(210 12% 90%) 100%) !important;
-    border-bottom: 1px solid hsl(220 12% 70%) !important;
+      hsl(0 0% 92%) 0%,
+      hsl(0 0% 80%) 50%,
+      hsl(0 0% 72%) 100%) !important;
+    border-bottom: 2px solid hsl(0 0% 50%) !important;
+    box-shadow:
+      0 1px 0 hsl(0 0% 100% / 0.6) inset,
+      0 2px 6px hsl(0 0% 0% / 0.25);
   }
   .void-board.office-mode header h1 {
     font-family: 'Inter', sans-serif !important;
-    letter-spacing: 0.15em !important;
-    font-weight: 600 !important;
-    color: hsl(220 18% 22%) !important;
+    letter-spacing: 0.25em !important;
+    font-weight: 700 !important;
+    color: hsl(220 20% 22%) !important;
+    text-shadow:
+      0 1px 0 hsl(0 0% 100% / 0.7),
+      0 -1px 0 hsl(0 0% 0% / 0.15);
   }
 
-  /* Spawn button: brushed-metal pill */
+  /* Spawn button: chunky brushed-metal pill */
   .void-board.office-mode .btn-spawn {
-    background: linear-gradient(180deg, hsl(210 10% 95%), hsl(210 10% 82%)) !important;
-    color: hsl(220 18% 22%) !important;
-    border: 2px solid hsl(220 12% 60%) !important;
+    background: linear-gradient(180deg,
+      hsl(0 0% 94%) 0%,
+      hsl(0 0% 78%) 50%,
+      hsl(0 0% 68%) 100%) !important;
+    color: hsl(220 20% 20%) !important;
+    border: 2px solid hsl(0 0% 50%) !important;
     box-shadow:
-      0 2px 0 hsl(0 0% 100% / 0.6) inset,
-      0 4px 8px hsl(220 20% 30% / 0.2);
+      0 2px 0 hsl(0 0% 100% / 0.7) inset,
+      0 -2px 0 hsl(0 0% 40% / 0.4) inset,
+      0 6px 12px hsl(0 0% 0% / 0.3);
+  }
+
+  /* Paperclip icon at top of every note in office mode */
+  .void-board.office-mode [class*="note-shape-square"]::before,
+  .void-board.office-mode [class*="note-shape-torn"]::before {
+    content: '';
+    position: absolute;
+    top: -10px;
+    left: 50%;
+    transform: translateX(-50%) rotate(-8deg);
+    width: 22px;
+    height: 32px;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 22 32' fill='none' stroke='%23888' stroke-width='2' stroke-linecap='round'><path d='M6 4 Q11 1 16 4 L16 22 Q16 28 11 28 Q6 28 6 22 L6 10 Q6 6 11 6 Q16 6 16 10 L16 20'/></svg>");
+    background-repeat: no-repeat;
+    background-size: contain;
+    pointer-events: none;
+    z-index: 10;
+    filter: drop-shadow(1px 2px 1px rgba(0, 0, 0, 0.3));
   }
 }
+
