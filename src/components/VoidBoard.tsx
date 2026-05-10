@@ -701,7 +701,19 @@ function VoidBoardContent() {
       {/* Local cursor — same style as remote, tracks instantly */}
       <LocalCursor sessionId={sessionId} />
 
+      {/* Lasso multi-select — Shift+drag */}
+      <LassoSelect
+        scale={scale}
+        panX={x}
+        panY={y}
+        notes={notes}
+        onSummarize={handleLassoSummarize}
+        onColorCode={handleLassoColorCode}
+        onGroup={handleLassoGroup}
+      />
+
       {/* Note Trails removed for performance */}
+
 
       <UpdateLog isOpen={showUpdateLog} onClose={() => setShowUpdateLog(false)} />
 
