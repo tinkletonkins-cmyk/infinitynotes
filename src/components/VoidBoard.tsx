@@ -598,6 +598,31 @@ function VoidBoardContent() {
     });
   }, [addConnection, toast]);
 
+  // Lasso multi-select handlers
+  const handleLassoSummarize = useCallback((noteIds: string[]) => {
+    const selected = notes.filter(n => noteIds.includes(n.id));
+    setShowSummaryModal(true);
+    generateSummary(selected);
+  }, [notes, generateSummary]);
+
+  const handleLassoColorCode = useCallback((noteIds: string[]) => {
+    const palette = ['#FFD93D', '#FF6B6B', '#6BCB77', '#4D96FF', '#C780FA', '#FFA552', '#F4B6C2', '#9DD9D2'];
+    const color = palette[Math.floor(Math.random() * palette.length)];
+    noteIds.forEach(id => updateNote(id, { color }));
+    toast({ title: 'Color coded', description: `${noteIds.length} notes now share a color.` });
+  }, [updateNote, toast]);
+
+  const handleLassoGroup = useCallback((noteIds: string[]) => {
+    const tag = `group-${Date.now().toString(36).slice(-4)}`;
+    noteIds.forEach(id => {
+      const note = notes.find(n => n.id === id);
+      const existing = note?.tags || [];
+      if (!existing.includes(tag)) updateNote(id, { tags: [...existing, tag] });
+    });
+    toast({ title: 'Grouped', description: `Tagged ${noteIds.length} notes as #${tag}.` });
+  }, [notes, updateNote, toast]);
+
+
   const currentVoid = currentVoidEarly;
 
   // Build board theme class
