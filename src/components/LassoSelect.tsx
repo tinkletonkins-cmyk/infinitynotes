@@ -111,7 +111,7 @@ export function LassoSelect({ scale, panX, panY, notes, onSummarize, onColorCode
 
   return (
     <>
-      {liveRect && (
+      {liveRect && (liveRect.width > 4 || liveRect.height > 4) && (
         <div
           className="fixed pointer-events-none border-2 border-dashed border-cyan-400 bg-cyan-400/10"
           style={{ left: liveRect.left, top: liveRect.top, width: liveRect.width, height: liveRect.height, zIndex: 9998 }}
