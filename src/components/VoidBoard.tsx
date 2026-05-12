@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useMemo, useEffect } from 'react';
-import { Plus, Link2, X, Wrench, Pencil, Sparkles, BookOpen, Zap } from 'lucide-react';
+import { Plus, Link2, X, Wrench, Pencil, Sparkles, BookOpen, Zap, MousePointer2, HelpCircle } from 'lucide-react';
 import { StickyNote } from './StickyNote';
 import { useNotes, Note } from '@/hooks/useNotes';
 import { useConnections } from '@/hooks/useConnections';
@@ -227,7 +227,10 @@ function VoidBoardContent() {
   const [connectingFrom, setConnectingFrom] = useState<string | null>(null);
   const [mousePosition, setMousePosition] = useState<{ x: number; y: number } | null>(null);
   const [showConstellation, setShowConstellation] = useState(false);
-  const [showWelcome, setShowWelcome] = useState(false);
+  const [showWelcome, setShowWelcome] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return localStorage.getItem('void-tutorial-seen') !== 'true';
+  });
   const [dragStates, setDragStates] = useState<Record<string, { isDragging: boolean; x: number; y: number }>>({});
   const [showSummaryModal, setShowSummaryModal] = useState(false);
   const [showSuggestionsModal, setShowSuggestionsModal] = useState(false);
@@ -237,14 +240,12 @@ function VoidBoardContent() {
   const [echoArchiveOpen, setEchoArchiveOpen] = useState(false);
   const [showUpdateLog, setShowUpdateLog] = useState(false);
   const [wireMode, setWireMode] = useState(false);
+  const [selectMode, setSelectMode] = useState(false);
   // Track mouse movement between down and up to distinguish click from drag
   const mouseDownPos = React.useRef<{ x: number; y: number } | null>(null);
 
 
-  // Show welcome intro for non-signed-in users
-  useEffect(() => {
-    setShowWelcome(!user);
-  }, [user]);
+  // Welcome tutorial is first-run only, but can be reopened from the help button.
 
   // gravity_anchor effect: periodically pull connected notes closer
   useEffect(() => {
@@ -533,6 +534,7 @@ function VoidBoardContent() {
   }, []);
 
   const handleDismissWelcome = useCallback(() => {
+    localStorage.setItem('void-tutorial-seen', 'true');
     setShowWelcome(false);
   }, []);
 
