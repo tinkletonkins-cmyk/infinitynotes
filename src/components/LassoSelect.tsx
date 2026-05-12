@@ -154,6 +154,12 @@ export function LassoSelect({ scale, panX, panY, notes, onSummarize, onColorCode
             >
               Color Code
             </button>
+            <button
+              className="px-3 py-1 text-xs uppercase tracking-wider font-mono hover:bg-foreground hover:text-background border-l border-foreground/20"
+              onClick={() => { onStack(selection.noteIds); setSelection(null); }}
+            >
+              Stack
+            </button>
           </div>
         </>
       )}
