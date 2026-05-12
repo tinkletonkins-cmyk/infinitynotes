@@ -674,6 +674,7 @@ function VoidBoardContent() {
       onMouseDown={(e) => { mouseDownPos.current = { x: e.clientX, y: e.clientY }; }}
       onClick={(e) => {
         if (connectingFrom) { cancelConnection(); return; }
+        if (selectMode || e.shiftKey) return;
         // Only fire on the raw board background — ignore clicks on any UI element
         const target = e.target as HTMLElement;
         if (target.closest('button, input, textarea, [class*="absolute"], header, footer, svg')) return;
@@ -948,6 +949,7 @@ function VoidBoardContent() {
         onMouseDown={(e) => { mouseDownPos.current = { x: e.clientX, y: e.clientY }; }}
         onClick={(e) => {
           if (connectingFrom) { cancelConnection(); return; }
+          if (selectMode || e.shiftKey) return;
           // Only fire when clicking the board background, not child elements
           if (e.target !== e.currentTarget) return;
           // Ignore if mouse moved more than 4px (was a pan)
