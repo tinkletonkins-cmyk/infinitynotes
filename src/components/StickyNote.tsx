@@ -467,6 +467,7 @@ export const StickyNote = memo(function StickyNote({
       onStartConnection={() => onStartConnection(id)}
     >
       <motion.div
+        data-note-id={id}
         drag={canDrag}
         dragMomentum={false}
         dragElastic={0.1}
