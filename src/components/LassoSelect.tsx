@@ -36,6 +36,21 @@ export function LassoSelect({ scale, panX, panY, notes, isActive, onSummarize, o
   const transformRef = useRef({ scale, panX, panY });
   transformRef.current = { scale, panX, panY };
 
+  const getRectForIds = useCallback((ids: string[]): ScreenRect | null => {
+    const boxes = ids
+      .map((id) => document.querySelector<HTMLElement>(`[data-note-id="${CSS.escape(id)}"]`)?.getBoundingClientRect())
+      .filter((box): box is DOMRect => !!box);
+
+    if (boxes.length === 0) return null;
+
+    const left = Math.min(...boxes.map((box) => box.left));
+    const top = Math.min(...boxes.map((box) => box.top));
+    const right = Math.max(...boxes.map((box) => box.right));
+    const bottom = Math.max(...boxes.map((box) => box.bottom));
+
+    return { left, top, width: right - left, height: bottom - top };
+  }, []);
+
   const computeNoteIds = useCallback((rect: ScreenRect): string[] => {
     const domIds = Array.from(document.querySelectorAll<HTMLElement>('[data-note-id]'))
       .filter((el) => {
@@ -69,6 +84,22 @@ export function LassoSelect({ scale, panX, panY, notes, isActive, onSummarize, o
       if (e.button !== 0) return;
       if (!isActive && !e.shiftKey) return;
       const target = e.target as HTMLElement;
+      const noteEl = target.closest<HTMLElement>('[data-note-id]');
+      if (isActive && noteEl && !target.closest('button, [data-lasso-menu]')) {
+        e.preventDefault();
+        e.stopPropagation();
+        const id = noteEl.dataset.noteId;
+        if (!id) return;
+        setSelection((prev) => {
+          const nextIds = prev?.noteIds.includes(id)
+            ? prev.noteIds.filter((noteId) => noteId !== id)
+            : [...(prev?.noteIds ?? []), id];
+          if (nextIds.length === 0) return null;
+          const rect = getRectForIds(nextIds);
+          return rect ? { rect, noteIds: nextIds } : null;
+        });
+        return;
+      }
       // Only start lasso when clicking on the raw board, not on UI or notes
       if (target.closest('button, input, textarea, header, footer, [data-lasso-menu]')) return;
       if (!isActive && target.closest('[data-note-id]')) return;
@@ -131,7 +162,7 @@ export function LassoSelect({ scale, panX, panY, notes, isActive, onSummarize, o
       window.removeEventListener('mouseup', onUp);
       window.removeEventListener('click', onClickAnywhere);
     };
-  }, [computeNoteIds, isActive]);
+  }, [computeNoteIds, getRectForIds, isActive]);
 
   const liveRect: ScreenRect | null = start && current ? {
     left: Math.min(start.x, current.x),
@@ -150,7 +181,7 @@ export function LassoSelect({ scale, panX, panY, notes, isActive, onSummarize, o
       )}
       {isActive && !selection && !liveRect && (
         <div className="fixed left-1/2 top-28 z-[9997] -translate-x-1/2 pointer-events-none border border-foreground bg-background px-4 py-2 shadow-[4px_4px_0_0_hsl(var(--foreground)/0.25)]">
-          <span className="text-xs uppercase tracking-widest font-mono">Drag a box around notes, then choose Stack</span>
+          <span className="text-xs uppercase tracking-widest font-mono">Click notes or drag a box, then choose Stack</span>
         </div>
       )}
       {missRect && (
