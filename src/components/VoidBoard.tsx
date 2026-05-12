@@ -905,6 +905,24 @@ function VoidBoardContent() {
         <span className="text-xs uppercase tracking-widest font-mono">{wireMode ? 'Wiring…' : 'Wire'}</span>
       </button>
 
+      <button
+        onClick={() => { setSelectMode(v => !v); setConnectingFrom(null); }}
+        className={`fixed top-[368px] right-4 z-50 flex items-center gap-2 px-3 py-2 border transition-colors ${selectMode ? 'bg-foreground text-background border-foreground' : 'border-foreground bg-background hover:bg-foreground hover:text-background'}`}
+        title={selectMode ? 'Disable select mode' : 'Select notes: drag a box around notes'}
+      >
+        <MousePointer2 size={14} />
+        <span className="text-xs uppercase tracking-widest font-mono">{selectMode ? 'Selecting…' : 'Select'}</span>
+      </button>
+
+      <button
+        onClick={() => setShowWelcome(true)}
+        className="fixed top-[416px] right-4 z-50 flex items-center gap-2 px-3 py-2 border border-foreground bg-background hover:bg-foreground hover:text-background transition-colors"
+        title="Open tutorial"
+      >
+        <HelpCircle size={14} />
+        <span className="text-xs uppercase tracking-widest font-mono">Help</span>
+      </button>
+
       {isLoading && (
         <div className="pt-16 min-h-screen relative z-10">
           {[...Array(5)].map((_, i) => (
