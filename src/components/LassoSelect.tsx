@@ -12,6 +12,7 @@ interface LassoSelectProps {
   onSummarize: (noteIds: string[]) => void;
   onColorCode: (noteIds: string[]) => void;
   onGroup: (noteIds: string[]) => void;
+  onStack: (noteIds: string[]) => void;
 }
 
 interface ScreenRect { left: number; top: number; width: number; height: number; }
