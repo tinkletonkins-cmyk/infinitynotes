@@ -260,6 +260,15 @@
   .void-board, .void-board * {
     cursor: none !important;
   }
+
+  .void-board.select-mode,
+  .void-board.select-mode .viewport-container {
+    cursor: crosshair !important;
+  }
+
+  .void-board.select-mode [data-note-id] {
+    cursor: crosshair !important;
+  }
   
   /* Mode toggle switch */
   .mode-toggle {

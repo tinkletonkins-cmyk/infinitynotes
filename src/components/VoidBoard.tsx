@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useMemo, useEffect } from 'react';
-import { Plus, Link2, X, Wrench, Pencil, Sparkles, BookOpen, Zap } from 'lucide-react';
+import { Plus, Link2, X, Wrench, Pencil, Sparkles, BookOpen, Zap, MousePointer2, HelpCircle } from 'lucide-react';
 import { StickyNote } from './StickyNote';
 import { useNotes, Note } from '@/hooks/useNotes';
 import { useConnections } from '@/hooks/useConnections';
@@ -227,7 +227,10 @@ function VoidBoardContent() {
   const [connectingFrom, setConnectingFrom] = useState<string | null>(null);
   const [mousePosition, setMousePosition] = useState<{ x: number; y: number } | null>(null);
   const [showConstellation, setShowConstellation] = useState(false);
-  const [showWelcome, setShowWelcome] = useState(false);
+  const [showWelcome, setShowWelcome] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return localStorage.getItem('void-tutorial-seen') !== 'true';
+  });
   const [dragStates, setDragStates] = useState<Record<string, { isDragging: boolean; x: number; y: number }>>({});
   const [showSummaryModal, setShowSummaryModal] = useState(false);
   const [showSuggestionsModal, setShowSuggestionsModal] = useState(false);
@@ -237,14 +240,12 @@ function VoidBoardContent() {
   const [echoArchiveOpen, setEchoArchiveOpen] = useState(false);
   const [showUpdateLog, setShowUpdateLog] = useState(false);
   const [wireMode, setWireMode] = useState(false);
+  const [selectMode, setSelectMode] = useState(false);
   // Track mouse movement between down and up to distinguish click from drag
   const mouseDownPos = React.useRef<{ x: number; y: number } | null>(null);
 
 
-  // Show welcome intro for non-signed-in users
-  useEffect(() => {
-    setShowWelcome(!user);
-  }, [user]);
+  // Welcome tutorial is first-run only, but can be reopened from the help button.
 
   // gravity_anchor effect: periodically pull connected notes closer
   useEffect(() => {
@@ -533,6 +534,7 @@ function VoidBoardContent() {
   }, []);
 
   const handleDismissWelcome = useCallback(() => {
+    localStorage.setItem('void-tutorial-seen', 'true');
     setShowWelcome(false);
   }, []);
 
@@ -628,7 +630,10 @@ function VoidBoardContent() {
     const selected = noteIds
       .map(id => notes.find(n => n.id === id))
       .filter((n): n is typeof notes[number] => !!n);
-    if (selected.length < 2) return;
+    if (selected.length < 2) {
+      toast({ title: 'Select at least 2 notes', description: 'Drag the box around multiple notes before stacking.' });
+      return;
+    }
     // Anchor: centroid of current positions, snapped to whole pixels
     const cx = Math.round(selected.reduce((s, n) => s + n.position.x, 0) / selected.length);
     const cy = Math.round(selected.reduce((s, n) => s + n.position.y, 0) / selected.length);
@@ -665,10 +670,11 @@ function VoidBoardContent() {
 
   return (
     <div
-      className={`void-board relative ${boardThemeClass}`}
+      className={`void-board relative ${boardThemeClass} ${selectMode ? 'select-mode' : ''}`}
       onMouseDown={(e) => { mouseDownPos.current = { x: e.clientX, y: e.clientY }; }}
       onClick={(e) => {
         if (connectingFrom) { cancelConnection(); return; }
+        if (selectMode || e.shiftKey) return;
         // Only fire on the raw board background — ignore clicks on any UI element
         const target = e.target as HTMLElement;
         if (target.closest('button, input, textarea, [class*="absolute"], header, footer, svg')) return;
@@ -736,6 +742,7 @@ function VoidBoardContent() {
         panX={x}
         panY={y}
         notes={notes}
+        isActive={selectMode}
         onSummarize={handleLassoSummarize}
         onColorCode={handleLassoColorCode}
         onGroup={handleLassoGroup}
@@ -899,6 +906,24 @@ function VoidBoardContent() {
         <span className="text-xs uppercase tracking-widest font-mono">{wireMode ? 'Wiring…' : 'Wire'}</span>
       </button>
 
+      <button
+        onClick={() => { setSelectMode(v => !v); setConnectingFrom(null); }}
+        className={`fixed top-[368px] right-4 z-50 flex items-center gap-2 px-3 py-2 border transition-colors ${selectMode ? 'bg-foreground text-background border-foreground' : 'border-foreground bg-background hover:bg-foreground hover:text-background'}`}
+        title={selectMode ? 'Disable select mode' : 'Select notes: drag a box around notes'}
+      >
+        <MousePointer2 size={14} />
+        <span className="text-xs uppercase tracking-widest font-mono">{selectMode ? 'Selecting…' : 'Select'}</span>
+      </button>
+
+      <button
+        onClick={() => setShowWelcome(true)}
+        className="fixed top-[416px] right-4 z-50 flex items-center gap-2 px-3 py-2 border border-foreground bg-background hover:bg-foreground hover:text-background transition-colors"
+        title="Open tutorial"
+      >
+        <HelpCircle size={14} />
+        <span className="text-xs uppercase tracking-widest font-mono">Help</span>
+      </button>
+
       {isLoading && (
         <div className="pt-16 min-h-screen relative z-10">
           {[...Array(5)].map((_, i) => (
@@ -924,6 +949,7 @@ function VoidBoardContent() {
         onMouseDown={(e) => { mouseDownPos.current = { x: e.clientX, y: e.clientY }; }}
         onClick={(e) => {
           if (connectingFrom) { cancelConnection(); return; }
+          if (selectMode || e.shiftKey) return;
           // Only fire when clicking the board background, not child elements
           if (e.target !== e.currentTarget) return;
           // Ignore if mouse moved more than 4px (was a pan)
