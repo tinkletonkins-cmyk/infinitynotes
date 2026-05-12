@@ -50,13 +50,13 @@ export function LassoSelect({ scale, panX, panY, notes, onSummarize, onColorCode
 
   useEffect(() => {
     const onDown = (e: MouseEvent) => {
-      if (!e.shiftKey || e.button !== 0) return;
+      if (e.button !== 0) return;
       const target = e.target as HTMLElement;
       // Only start lasso when clicking on the raw board, not on UI or notes
-      if (target.closest('button, input, textarea, header, footer, [data-note-id]')) return;
+      if (target.closest('button, input, textarea, header, footer, [data-note-id], [data-lasso-menu]')) return;
       if (!target.closest('.void-board')) return;
-      e.preventDefault();
-      e.stopPropagation();
+      // Don't hijack panning (Space+drag is handled by useZoomPan via cursor=grab)
+      if (document.body.style.cursor === 'grab' || document.body.style.cursor === 'grabbing') return;
       draggingRef.current = true;
       setSelection(null);
       setStart({ x: e.clientX, y: e.clientY });
