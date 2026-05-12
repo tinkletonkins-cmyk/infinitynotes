@@ -739,6 +739,7 @@ function VoidBoardContent() {
         onSummarize={handleLassoSummarize}
         onColorCode={handleLassoColorCode}
         onGroup={handleLassoGroup}
+        onStack={handleLassoStack}
       />
 
       {/* Note Trails removed for performance */}
