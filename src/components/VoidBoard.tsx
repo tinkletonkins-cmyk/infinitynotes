@@ -670,7 +670,7 @@ function VoidBoardContent() {
 
   return (
     <div
-      className={`void-board relative ${boardThemeClass}`}
+      className={`void-board relative ${boardThemeClass} ${selectMode ? 'select-mode' : ''}`}
       onMouseDown={(e) => { mouseDownPos.current = { x: e.clientX, y: e.clientY }; }}
       onClick={(e) => {
         if (connectingFrom) { cancelConnection(); return; }
