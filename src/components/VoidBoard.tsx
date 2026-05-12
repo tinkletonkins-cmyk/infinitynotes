@@ -630,7 +630,10 @@ function VoidBoardContent() {
     const selected = noteIds
       .map(id => notes.find(n => n.id === id))
       .filter((n): n is typeof notes[number] => !!n);
-    if (selected.length < 2) return;
+    if (selected.length < 2) {
+      toast({ title: 'Select at least 2 notes', description: 'Drag the box around multiple notes before stacking.' });
+      return;
+    }
     // Anchor: centroid of current positions, snapped to whole pixels
     const cx = Math.round(selected.reduce((s, n) => s + n.position.x, 0) / selected.length);
     const cy = Math.round(selected.reduce((s, n) => s + n.position.y, 0) / selected.length);
@@ -738,6 +741,7 @@ function VoidBoardContent() {
         panX={x}
         panY={y}
         notes={notes}
+        isActive={selectMode}
         onSummarize={handleLassoSummarize}
         onColorCode={handleLassoColorCode}
         onGroup={handleLassoGroup}
