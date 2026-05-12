@@ -37,6 +37,19 @@ export function LassoSelect({ scale, panX, panY, notes, isActive, onSummarize, o
   transformRef.current = { scale, panX, panY };
 
   const computeNoteIds = useCallback((rect: ScreenRect): string[] => {
+    const domIds = Array.from(document.querySelectorAll<HTMLElement>('[data-note-id]'))
+      .filter((el) => {
+        const box = el.getBoundingClientRect();
+        return box.left < rect.left + rect.width &&
+          box.right > rect.left &&
+          box.top < rect.top + rect.height &&
+          box.bottom > rect.top;
+      })
+      .map((el) => el.dataset.noteId)
+      .filter((id): id is string => !!id);
+
+    if (domIds.length > 0) return domIds;
+
     const { scale: s, panX: px, panY: py } = transformRef.current;
     const x1 = (rect.left - px) / s;
     const y1 = (rect.top - py) / s;
