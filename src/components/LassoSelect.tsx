@@ -21,7 +21,7 @@ interface ScreenRect { left: number; top: number; width: number; height: number;
  * Hold Shift and drag on empty canvas to lasso multiple notes.
  * Releases an action menu (Group / Summarize / Color Code) above the selection.
  */
-export function LassoSelect({ scale, panX, panY, notes, onSummarize, onColorCode, onGroup }: LassoSelectProps) {
+export function LassoSelect({ scale, panX, panY, notes, onSummarize, onColorCode, onGroup, onStack }: LassoSelectProps) {
   const [start, setStart] = useState<{ x: number; y: number } | null>(null);
   const [current, setCurrent] = useState<{ x: number; y: number } | null>(null);
   const [selection, setSelection] = useState<{ rect: ScreenRect; noteIds: string[] } | null>(null);
