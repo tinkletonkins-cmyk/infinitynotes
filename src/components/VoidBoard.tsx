@@ -622,6 +622,35 @@ function VoidBoardContent() {
     toast({ title: 'Grouped', description: `Tagged ${noteIds.length} notes as #${tag}.` });
   }, [notes, updateNote, toast]);
 
+  // Stack selected notes like a real paper pile — offset each layer so curved
+  // corners and shadows of the layers below stay visible.
+  const handleLassoStack = useCallback((noteIds: string[]) => {
+    const selected = noteIds
+      .map(id => notes.find(n => n.id === id))
+      .filter((n): n is typeof notes[number] => !!n);
+    if (selected.length < 2) return;
+    // Anchor: centroid of current positions, snapped to whole pixels
+    const cx = Math.round(selected.reduce((s, n) => s + n.position.x, 0) / selected.length);
+    const cy = Math.round(selected.reduce((s, n) => s + n.position.y, 0) / selected.length);
+    const OFF_X = 14; // horizontal stagger per layer
+    const OFF_Y = 18; // vertical stagger per layer — reveals curled corner + shadow
+    selected.forEach((n, i) => {
+      // Alternate the rotation slightly so the pile looks hand-stacked
+      const jitter = ((i % 2 === 0 ? 1 : -1) * (1 + (i % 3))) * 0.6;
+      updateNote(n.id, {
+        position: { x: cx + i * OFF_X, y: cy + i * OFF_Y },
+        // keep id-based tilt baseline but add a small per-layer jitter
+      } as any);
+      // Rotation isn't part of updateNote payload — apply via DOM-friendly tag-free path:
+      // we piggyback on the rotation field through a direct supabase-less local nudge.
+      // Rotation is initialized once from note.rotation || tiltFromId; visual offset alone
+      // is enough to read as a stack, so we leave rotation untouched here.
+      void jitter;
+    });
+    toast({ title: 'Stacked', description: `Piled ${selected.length} notes like paper.` });
+  }, [notes, updateNote, toast]);
+
+
 
   const currentVoid = currentVoidEarly;
 
@@ -710,6 +739,7 @@ function VoidBoardContent() {
         onSummarize={handleLassoSummarize}
         onColorCode={handleLassoColorCode}
         onGroup={handleLassoGroup}
+        onStack={handleLassoStack}
       />
 
       {/* Note Trails removed for performance */}

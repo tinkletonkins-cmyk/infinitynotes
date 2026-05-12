@@ -12,6 +12,7 @@ interface LassoSelectProps {
   onSummarize: (noteIds: string[]) => void;
   onColorCode: (noteIds: string[]) => void;
   onGroup: (noteIds: string[]) => void;
+  onStack: (noteIds: string[]) => void;
 }
 
 interface ScreenRect { left: number; top: number; width: number; height: number; }
@@ -20,7 +21,7 @@ interface ScreenRect { left: number; top: number; width: number; height: number;
  * Hold Shift and drag on empty canvas to lasso multiple notes.
  * Releases an action menu (Group / Summarize / Color Code) above the selection.
  */
-export function LassoSelect({ scale, panX, panY, notes, onSummarize, onColorCode, onGroup }: LassoSelectProps) {
+export function LassoSelect({ scale, panX, panY, notes, onSummarize, onColorCode, onGroup, onStack }: LassoSelectProps) {
   const [start, setStart] = useState<{ x: number; y: number } | null>(null);
   const [current, setCurrent] = useState<{ x: number; y: number } | null>(null);
   const [selection, setSelection] = useState<{ rect: ScreenRect; noteIds: string[] } | null>(null);
@@ -152,6 +153,12 @@ export function LassoSelect({ scale, panX, panY, notes, onSummarize, onColorCode
               onClick={() => { onColorCode(selection.noteIds); setSelection(null); }}
             >
               Color Code
+            </button>
+            <button
+              className="px-3 py-1 text-xs uppercase tracking-wider font-mono hover:bg-foreground hover:text-background border-l border-foreground/20"
+              onClick={() => { onStack(selection.noteIds); setSelection(null); }}
+            >
+              Stack
             </button>
           </div>
         </>
