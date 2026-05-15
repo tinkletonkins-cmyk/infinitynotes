@@ -30,6 +30,7 @@ export function VoidSummaryModal({ isOpen, onClose, summary, isLoading }: VoidSu
             {/* Close button */}
             <button
               onClick={onClose}
+              aria-label="Close summary"
               className="absolute top-4 right-4 p-2 hover:bg-foreground hover:text-background transition-colors"
             >
               <X size={16} />

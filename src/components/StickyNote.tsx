@@ -137,7 +137,7 @@ const StickyNoteChat = memo(function StickyNoteChat({
           placeholder={`${username}: say something...`}
           className="note-chat-input flex-1"
         />
-        <button onClick={handleSend} className="p-2 hover:opacity-70 transition-opacity" title="Send message">
+        <button onClick={handleSend} aria-label="Send message" className="p-2 hover:opacity-70 transition-opacity" title="Send message">
           <Send size={14} />
         </button>
       </div>
@@ -175,6 +175,7 @@ const StickyNoteControls = memo(function StickyNoteControls({
       <div className="flex gap-1">
         <button
           onClick={(e) => { e.stopPropagation(); onStartConnection(id); }}
+          aria-label="Connect to another note"
           className={`p-1 hover:opacity-70 transition-opacity ${isConnecting ? 'opacity-100 text-yellow-400' : 'opacity-70'}`}
           title="Connect to another note"
         >
@@ -182,6 +183,7 @@ const StickyNoteControls = memo(function StickyNoteControls({
         </button>
         <button
           onClick={(e) => { e.stopPropagation(); onToggleHistory(); }}
+          aria-label="View note history"
           className="p-1 hover:opacity-70 transition-opacity opacity-70"
           title="View history"
         >
@@ -191,12 +193,13 @@ const StickyNoteControls = memo(function StickyNoteControls({
         <NoteShapePicker currentShape={shape} onShapeSelect={onShapeChange} />
         <button
           onClick={onToggleChat}
+          aria-label="Chat with this note"
           className={`p-1 hover:opacity-70 transition-opacity ${showChat ? 'opacity-100' : 'opacity-70'}`}
           title="Chat with this note"
         >
           <MessageCircle size={16} fill={showChat ? 'currentColor' : 'none'} />
         </button>
-        <button onClick={() => onDelete(id)} className="p-1 hover:opacity-70 transition-opacity" title="Delete note">
+        <button onClick={() => onDelete(id)} aria-label="Delete note" className="p-1 hover:opacity-70 transition-opacity" title="Delete note">
           <X size={16} />
         </button>
       </div>

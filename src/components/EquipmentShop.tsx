@@ -207,6 +207,7 @@ export function EquipmentShop({ isOpen, onClose, userId, currentVoidId }: Equipm
               </div>
               <button
                 onClick={onClose}
+                aria-label="Close equipment shop"
                 className="p-1.5 border border-foreground/20 hover:bg-foreground hover:text-background transition-colors"
               >
                 <X size={15} />

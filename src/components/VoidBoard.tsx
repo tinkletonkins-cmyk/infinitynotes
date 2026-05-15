@@ -809,6 +809,7 @@ function VoidBoardContent() {
           </span>
           <button
             onClick={cancelConnection}
+            aria-label="Cancel connection"
             className="ml-2 p-1 hover:bg-yellow-500/30"
             title="Cancel connection"
           >
@@ -1033,6 +1034,7 @@ function VoidBoardContent() {
       {/* Spawn button */}
       <button
         onClick={handleAddNote}
+        aria-label="Spawn new note"
         className="btn-spawn"
         title="Spawn new note"
       >
