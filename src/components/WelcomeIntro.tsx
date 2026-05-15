@@ -49,16 +49,16 @@ export function WelcomeIntro({ visible, onDismiss }: WelcomeIntroProps) {
 
             <div className="mb-6 pr-10">
               <p className="mb-2 text-xs uppercase tracking-widest text-muted-foreground font-mono">Quick tutorial</p>
-              <h1 className="text-3xl md:text-5xl font-bold uppercase tracking-wider leading-tight text-foreground">
+              <h2 className="text-3xl md:text-5xl font-bold uppercase tracking-wider leading-tight text-foreground">
                 How to use the board
-              </h1>
+              </h2>
             </div>
 
             <div className="grid gap-3 md:grid-cols-5">
               {steps.map(({ icon: Icon, label, text }) => (
                 <div key={label} className="border border-foreground/40 bg-muted/40 p-3 min-h-[150px]">
                   <Icon size={22} className="mb-3" />
-                  <h2 className="mb-2 text-sm font-bold uppercase tracking-widest font-mono">{label}</h2>
+                  <h3 className="mb-2 text-sm font-bold uppercase tracking-widest font-mono">{label}</h3>
                   <p className="text-sm leading-relaxed text-muted-foreground">{text}</p>
                 </div>
               ))}
