@@ -1,0 +1,10 @@
+# Infinity Notes
+
+> Real-time collaborative infinite canvas for sticky notes. Brainstorm, organize, and connect ideas with your team on a boundless whiteboard.
+
+Infinity Notes is a multiplayer thinking tool. Users create shared "Voids" (workspaces) joinable via 5-digit codes, drop sticky notes anywhere on an infinite canvas, group and connect them, and use AI to summarize or auto-connect related ideas.
+
+## Pages
+
+- [Home](/): The main infinite canvas workspace.
+- [Sign in](/auth): Sign in or create an account.

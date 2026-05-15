@@ -124,6 +124,7 @@ export function UpdateLog({ isOpen, onClose }: UpdateLogProps) {
               </div>
               <button
                 onClick={onClose}
+                aria-label="Close updates"
                 className="p-1 hover:bg-foreground hover:text-background transition-colors"
               >
                 <X size={15} />

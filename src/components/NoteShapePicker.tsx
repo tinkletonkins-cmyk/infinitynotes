@@ -24,6 +24,7 @@ export function NoteShapePicker({ currentShape, onShapeSelect }: NoteShapePicker
     <div className="relative">
       <button
         onClick={() => setIsOpen(!isOpen)}
+        aria-label="Change note shape"
         className="p-1 hover:opacity-70 transition-opacity"
         title="Change note shape"
       >
@@ -41,6 +42,7 @@ export function NoteShapePicker({ currentShape, onShapeSelect }: NoteShapePicker
                   onShapeSelect(shape);
                   setIsOpen(false);
                 }}
+                aria-label={`Select ${label} shape`}
                 className={`p-1.5 hover:bg-muted transition-colors ${
                   currentShape === shape ? 'bg-foreground text-background' : ''
                 }`}

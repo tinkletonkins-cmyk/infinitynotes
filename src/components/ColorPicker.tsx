@@ -42,6 +42,7 @@ export function ColorPicker({ currentColor, onColorSelect }: ColorPickerProps) {
     <div ref={pickerRef} className="relative">
       <button
         onClick={() => setIsOpen(!isOpen)}
+        aria-label="Change note color"
         className="p-1 hover:opacity-70 transition-opacity opacity-70"
         title="Change color"
       >
@@ -57,6 +58,7 @@ export function ColorPicker({ currentColor, onColorSelect }: ColorPickerProps) {
                 onColorSelect(color);
                 setIsOpen(false);
               }}
+              aria-label={color === null ? 'Auto color (sentiment-based)' : `Set color ${color}`}
               className={`w-6 h-6 border border-foreground transition-transform hover:scale-110 ${
                 currentColor === color ? 'ring-2 ring-foreground ring-offset-1' : ''
               }`}

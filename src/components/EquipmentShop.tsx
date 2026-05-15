@@ -196,7 +196,7 @@ export function EquipmentShop({ isOpen, onClose, userId, currentVoidId }: Equipm
           <div className="border-b border-foreground/20 px-6 py-4 flex items-center justify-between">
             <div>
               <p className="text-[10px] font-mono uppercase tracking-[0.4em] text-foreground/40 mb-0.5">The Void</p>
-              <h1 className="text-lg font-mono uppercase tracking-[0.3em]">Equipment Bay</h1>
+              <h2 className="text-lg font-mono uppercase tracking-[0.3em]">Equipment Bay</h2>
             </div>
             {/* Currency display */}
             <div className="flex items-center gap-6">
@@ -207,6 +207,7 @@ export function EquipmentShop({ isOpen, onClose, userId, currentVoidId }: Equipm
               </div>
               <button
                 onClick={onClose}
+                aria-label="Close equipment shop"
                 className="p-1.5 border border-foreground/20 hover:bg-foreground hover:text-background transition-colors"
               >
                 <X size={15} />
