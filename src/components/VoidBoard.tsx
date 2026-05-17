@@ -227,10 +227,7 @@ function VoidBoardContent() {
   const [connectingFrom, setConnectingFrom] = useState<string | null>(null);
   const [mousePosition, setMousePosition] = useState<{ x: number; y: number } | null>(null);
   const [showConstellation, setShowConstellation] = useState(false);
-  const [showWelcome, setShowWelcome] = useState(() => {
-    if (typeof window === 'undefined') return false;
-    return localStorage.getItem('void-tutorial-seen') !== 'true';
-  });
+  const [showWelcome, setShowWelcome] = useState(false);
   const [dragStates, setDragStates] = useState<Record<string, { isDragging: boolean; x: number; y: number }>>({});
   const [showSummaryModal, setShowSummaryModal] = useState(false);
   const [showSuggestionsModal, setShowSuggestionsModal] = useState(false);
